@@ -66,46 +66,86 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
+    const projectId = (await params).projectId;
     const body = await request.json();
     const validatedData = createDocSchema.parse(body);
-    const { projectId } = await params;
-
+    
     const docs = await db.docs();
-    const result = await docs.insertOne({
+    
+    // 获取当前层级中最大的 priority
+    const query: any = {
+      projectId: new ObjectId(projectId)
+    };
+    
+    if (validatedData.parentDocId) {
+      query.parentDocId = new ObjectId(validatedData.parentDocId);
+    } else {
+      query.parentDocId = { $exists: false };
+    }
+    
+    const maxPriorityDoc = await docs
+      .find(query)
+      .sort({ priority: -1 })
+      .limit(1)
+      .toArray();
+    
+    const newPriority = maxPriorityDoc.length > 0 ? (maxPriorityDoc[0].priority || 0) + 1 : 0;
+    
+    const docToInsert: any = {
+      projectId: new ObjectId(projectId),
       title: validatedData.title,
       type: validatedData.type,
       content: validatedData.content || '',
       summary: validatedData.summary || '',
-      projectId: new ObjectId(projectId),
-      parentDocId: validatedData.parentDocId ? new ObjectId(validatedData.parentDocId) : undefined,
-      priority: validatedData.priority || 0,
+      priority: newPriority,
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
+    };
+
+    if (validatedData.parentDocId) {
+      docToInsert.parentDocId = new ObjectId(validatedData.parentDocId);
+    }
+    
+    const result = await docs.insertOne(docToInsert);
+
+    if (!result.acknowledged) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: '创建文档失败' 
+        },
+        { status: 500 }
+      );
+    }
+
+    // 获取新创建的文档
+    const newDoc = await docs.findOne({ _id: result.insertedId });
+    if (!newDoc) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: '获取新文档失败' 
+        },
+        { status: 500 }
+      );
+    }
+
+    // 将 ObjectId 转换为字符串
+    const formattedDoc = {
+      ...newDoc,
+      _id: newDoc._id.toString(),
+      projectId: newDoc.projectId?.toString() || '',
+      parentDocId: newDoc.parentDocId?.toString(),
+    };
 
     return NextResponse.json(
       { 
         success: true, 
-        data: {
-          _id: result.insertedId.toString(),
-          ...validatedData,
-          projectId: projectId,
-        }
+        data: formattedDoc 
       },
       { status: 201 }
     );
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: '数据验证失败',
-          errors: error.errors 
-        },
-        { status: 400 }
-      );
-    }
-    
     console.error('Failed to create doc:', error);
     return NextResponse.json(
       { 

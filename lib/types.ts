@@ -25,15 +25,16 @@ export namespace Type {
   }
 
   export type Task = WithId<{
+    _id: ObjectId;
     prompt: string;
     context: string;
-    status: string;
+    status: 'pending' | 'generating' | 'completed' | 'failed';
+    type: 'content' | 'summary' | 'outline' | 'improve';
     result: string;
-    projectId: string;
-    parentDocId: string;
-    targetDocId: string;
-    relatedDocs: string[];
-    relatedSummaries: string[];
+    projectId: ObjectId;
+    docId: ObjectId;
+    relatedDocs: ObjectId[];
+    relatedSummaries: ObjectId[];
     createdAt: Date;
     updatedAt: Date;
   }>;

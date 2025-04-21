@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, ChevronRight, ChevronDown, User, Users, BookOpen, Calendar, Package, MapPin, Zap, Wand2, FileText, Newspaper } from 'lucide-react';
+import { Plus, ChevronRight, ChevronDown, User, Users, BookOpen, Calendar, Package, MapPin, Zap, Wand2, FileText, Newspaper, AlertCircle, FileWarning } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Type } from '@/lib/types';
 
@@ -171,11 +171,13 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
     const isSelected = doc._id.toString() === selectedDocId;
     const typeColor = getDocTypeColor(doc.type);
     const typeIcon = getDocTypeIcon(doc.type);
+    const missingContent = !doc.content || doc.content.trim() === '';
+    const missingSummary = !doc.summary || doc.summary.trim() === '';
 
     return (
       <div key={doc._id.toString()}>
         <div
-          className={`flex items-center gap-2 px-4 py-2 cursor-pointer group ${
+          className={`flex items-center justify-between gap-2 px-4 py-2 cursor-pointer group ${
             isSelected 
               ? 'bg-blue-100 text-blue-700 font-medium border-l-4 border-blue-500' 
               : `${typeColor}`
@@ -193,7 +195,21 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
             {typeIcon}
             <span className="flex-1 truncate">{doc.title}</span>
           </div>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+          <div className="flex items-center gap-1">
+            {missingContent && (
+              <AlertCircle 
+                size={16} 
+                className="text-red-500" 
+                aria-label="缺少内容"
+              />
+            )}
+            {missingSummary && (
+              <FileWarning 
+                size={16} 
+                className="text-yellow-500" 
+                aria-label="缺少摘要"
+              />
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -236,14 +252,23 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsResizing(true);
     document.body.style.cursor = 'col-resize';
+    e.preventDefault(); // 防止文本选择
   };
 
   const handleMouseMove = (e: MouseEvent) => {
     if (!isResizing || !sidebarRef.current) return;
 
     const newWidth = e.clientX;
-    if (newWidth >= 200 && newWidth <= 600) {
+    const minWidth = 200;
+    const maxWidth = 600;
+    
+    // 确保宽度在合理范围内
+    if (newWidth >= minWidth && newWidth <= maxWidth) {
       sidebarRef.current.style.width = `${newWidth}px`;
+    } else if (newWidth < minWidth) {
+      sidebarRef.current.style.width = `${minWidth}px`;
+    } else if (newWidth > maxWidth) {
+      sidebarRef.current.style.width = `${maxWidth}px`;
     }
   };
 
@@ -279,8 +304,8 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
   return (
     <div 
       ref={sidebarRef}
-      className="relative w-64 bg-white border-r border-gray-200 flex flex-col"
-      style={{ minWidth: '200px', maxWidth: '600px' }}
+      className="relative bg-white border-r border-gray-200 flex flex-col"
+      style={{ width: '256px', minWidth: '200px', maxWidth: '600px' }}
     >
       <div className="p-4 border-b border-gray-200">
         <button

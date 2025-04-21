@@ -21,11 +21,11 @@ export namespace State {
     id?: string
     prompt?: string;
     context?: string;
+    type?: string;
     status?: string;
     result?: string;
     projectId?: string;
-    parentDocId?: string;
-    targetDocId?: string;
+    docId?: string;
     relatedDocs?: string[];
     relatedSummaries?: string[];
     createdAt?: Date;

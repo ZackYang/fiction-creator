@@ -9,19 +9,20 @@ export namespace Type {
     author: string;
   }>;
 
-  export type DocType = 'character' | 'organization' | 'background' | 'event' | 'item' | 'location' | 'ability' | 'spell' | 'other';
+  export type DocType = 'character' | 'organization' | 'background' | 'event' | 'item' | 'location' | 'ability' | 'spell' | 'article' | 'other';
 
-  export type Doc = WithId<{
-    name: string;
+  export interface Doc {
+    _id: ObjectId;
+    title: string;
     type: DocType;
-    description: string;
+    content: string;
     summary: string;
     projectId: ObjectId;
-    parentDocId: string;
+    parentDocId?: ObjectId;
     priority: number;
     createdAt: Date;
     updatedAt: Date;
-  }>;
+  }
 
   export type Task = WithId<{
     prompt: string;

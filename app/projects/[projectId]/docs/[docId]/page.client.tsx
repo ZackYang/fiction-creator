@@ -2,72 +2,97 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { Type } from '@/lib/types';
+import dynamic from 'next/dynamic';
+import '@uiw/react-md-editor/markdown-editor.css';
+import '@uiw/react-markdown-preview/markdown.css';
 
-interface Doc {
-  _id: string;
-  projectId: string;
-  title: string;
-  content?: string;
-  parentDocId?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+const MDEditor = dynamic(
+  () => import('@uiw/react-md-editor').then((mod) => mod.default),
+  { ssr: false }
+);
 
-export default function DocEditor({ docId, projectId }: { docId: string, projectId: string }) {
+export default function DocEditor() {
   const router = useRouter();
-  const [doc, setDoc] = useState<Doc | null>(null);
+  const params = useParams();
+  const projectId = params.projectId as string;
+  const docId = params.docId as string;
+  const [doc, setDoc] = useState<Type.Doc | null>(null);
+  const [title, setTitle] = useState('');
+  const [type, setType] = useState<Type.DocType>('other');
+  const [content, setContent] = useState('');
+  const [summary, setSummary] = useState('');
+  const [priority, setPriority] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const fetchDoc = async () => {
-      try {
-        const response = await fetch(`/api/projects/${projectId}/docs/${docId}`);
-        const data = await response.json();
-        if (data.success) {
-          setDoc(data.data);
-        } else {
-          toast.error(data.message || '获取文档失败');
-        }
-      } catch (error) {
-        console.error('Failed to fetch doc:', error);
-        toast.error('获取文档失败');
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchDoc();
-  }, [docId, projectId]);
+  }, [projectId, docId]);
+
+  const fetchDoc = async () => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/docs/${docId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch doc');
+      }
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to fetch doc');
+      }
+      setDoc(data.data);
+      setTitle(data.data.title);
+      setType(data.data.type);
+      setContent(data.data.content || '');
+      setSummary(data.data.summary || '');
+      setPriority(data.data.priority || 0);
+    } catch (error) {
+      console.error('Error fetching doc:', error);
+      toast.error('Failed to load document');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!doc) return;
     
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/projects/${projectId}/docs`, {
+      const response = await fetch(`/api/projects/${projectId}/docs/${docId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          _id: doc._id,
-          title: doc.title,
-          content: doc.content,
-          parentDocId: doc.parentDocId,
+          title,
+          type,
+          content,
+          summary,
+          priority,
         }),
       });
 
-      const data = await response.json();
-      if (data.success) {
-        toast.success('文档已保存');
-        setDoc(data.data);
-      } else {
-        toast.error(data.message || '保存失败');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save doc');
       }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to save doc');
+      }
+
+      toast.success('Document saved successfully');
+      
+      // 触发文档列表刷新
+      const event = new CustomEvent('refreshDocs');
+      window.dispatchEvent(event);
     } catch (error) {
-      console.error('Failed to save doc:', error);
-      toast.error('保存失败');
+      console.error('Error saving doc:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to save document');
     } finally {
       setIsSaving(false);
     }
@@ -93,6 +118,27 @@ export default function DocEditor({ docId, projectId }: { docId: string, project
       console.error('Failed to delete doc:', error);
       toast.error('删除失败');
     }
+  };
+
+  const getWordCount = (text: string) => {
+    // 统计中文字符
+    const chineseChars = text.match(/[\u4e00-\u9fa5]/g) || [];
+    const chineseCount = chineseChars.length;
+
+    // 统计英文单词
+    const englishWords = text
+      .replace(/[\u4e00-\u9fa5]/g, ' ') // 将中文字符替换为空格
+      .replace(/[^\w\s]/g, ' ') // 移除标点符号
+      .split(/\s+/) // 按空格分割
+      .filter(word => word.length > 0); // 过滤空字符串
+
+    const englishCount = englishWords.length;
+
+    return {
+      chinese: chineseCount,
+      english: englishCount,
+      total: chineseCount + englishCount
+    };
   };
 
   if (isLoading) {
@@ -153,29 +199,69 @@ export default function DocEditor({ docId, projectId }: { docId: string, project
           <label className="block text-sm font-medium mb-1">标题</label>
           <input
             type="text"
-            value={doc.title}
-            onChange={(e) => setDoc({ ...doc, title: e.target.value })}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
             className="w-full p-2 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">内容</label>
+          <label className="block text-sm font-medium mb-1">类型</label>
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as Type.DocType)}
+            className="w-full p-2 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="character">Character</option>
+            <option value="organization">Organization</option>
+            <option value="background">Background</option>
+            <option value="event">Event</option>
+            <option value="item">Item</option>
+            <option value="location">Location</option>
+            <option value="ability">Ability</option>
+            <option value="spell">Spell</option>
+            <option value="article">Article</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium">内容</label>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span>中文字数: {getWordCount(content).chinese}</span>
+              <span>|</span>
+              <span>英文单词: {getWordCount(content).english}</span>
+              <span>|</span>
+              <span>总计: {getWordCount(content).total}</span>
+            </div>
+          </div>
+          <div className="border border-gray-300 rounded overflow-hidden">
+            <MDEditor
+              value={content}
+              onChange={(value) => setContent(value || '')}
+              height={500}
+              preview="live"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">摘要</label>
           <textarea
-            value={doc.content || ''}
-            onChange={(e) => setDoc({ ...doc, content: e.target.value })}
-            className="w-full h-96 p-2 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+            className="w-full h-32 p-2 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">父文档 ID</label>
+          <label className="block text-sm font-medium mb-1">优先级</label>
           <input
-            type="text"
-            value={doc.parentDocId || ''}
-            onChange={(e) => setDoc({ ...doc, parentDocId: e.target.value || undefined })}
+            type="number"
+            value={priority}
+            onChange={(e) => setPriority(Number(e.target.value))}
             className="w-full p-2 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            placeholder="留空表示没有父文档"
           />
         </div>
 

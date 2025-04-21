@@ -11,7 +11,7 @@ export namespace State {
 
   export type Doc = {
     id?: string;
-    name?: string;
+    title?: string;
     description?: string;
     createdAt?: Date;
     updatedAt?: Date;

@@ -2,12 +2,16 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/mongo';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
+import { Type } from '@/lib/types';
 
 // 文档创建验证模式
 const createDocSchema = z.object({
   title: z.string().min(1, '文档标题不能为空'),
+  type: z.enum(['character', 'organization', 'background', 'event', 'item', 'location', 'ability', 'spell', 'article', 'other']),
   content: z.string().optional(),
+  summary: z.string().optional(),
   parentDocId: z.string().optional(),
+  priority: z.number().optional(),
 });
 
 // 文档更新验证模式
@@ -26,7 +30,7 @@ export async function GET(
     const docs = await db.docs();
     const docList = await docs
       .find({ projectId: new ObjectId(projectId) })
-      .sort({ updatedAt: -1 })
+      .sort({ priority: 1, updatedAt: -1 })
       .toArray();
 
     // 将 ObjectId 转换为字符串
@@ -34,6 +38,7 @@ export async function GET(
       ...doc,
       _id: doc._id.toString(),
       projectId: doc.projectId?.toString() || '',
+      parentDocId: doc.parentDocId?.toString(),
     }));
 
     return NextResponse.json(
@@ -67,8 +72,13 @@ export async function POST(
 
     const docs = await db.docs();
     const result = await docs.insertOne({
-      ...validatedData,
+      title: validatedData.title,
+      type: validatedData.type,
+      content: validatedData.content || '',
+      summary: validatedData.summary || '',
       projectId: new ObjectId(projectId),
+      parentDocId: validatedData.parentDocId ? new ObjectId(validatedData.parentDocId) : undefined,
+      priority: validatedData.priority || 0,
       createdAt: new Date(),
       updatedAt: new Date(),
     });

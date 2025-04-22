@@ -4,7 +4,8 @@ export namespace State {
   export type Project = {
     id?: string;
     name?: string;
-    description?: string;
+    taskConfigs?: TaskConfig[];
+    tasks?: Task[];
     createdAt?: Date;
     updatedAt?: Date;
   };
@@ -17,12 +18,16 @@ export namespace State {
     updatedAt?: Date;
   };
 
-  export type Task = {
-    id?: string
+  export type TaskConfig = {
+    id?: string;
     prompt?: string;
     context?: string;
     type?: string;
     status?: string;
+  }
+
+  export type Task = TaskConfig & {
+    id?: string;
     result?: string;
     projectId?: string;
     docId?: string;

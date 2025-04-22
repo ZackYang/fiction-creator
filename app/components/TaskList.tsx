@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Type } from '@/lib/types';
 import toast from 'react-hot-toast';
-import { Clock, CheckCircle2, AlertCircle, Loader2, Trash2, Play, Check } from 'lucide-react';
+import { Clock, CheckCircle2, AlertCircle, Loader2, Trash2, Play, Check, Eye, Copy } from 'lucide-react';
+import TaskDialog from './TaskDialog';
 
 interface TaskListProps {
   projectId: string;
@@ -15,6 +16,9 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
   const [tasks, setTasks] = useState<Type.Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [previewTask, setPreviewTask] = useState<Type.Task | null>(null);
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Type.Task | null>(null);
 
   useEffect(() => {
     fetchTasks();
@@ -128,6 +132,11 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
     }
   };
 
+  const handleCopyTask = (task: Type.Task) => {
+    setSelectedTask(task);
+    setIsTaskDialogOpen(true);
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
@@ -171,67 +180,126 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
   }
 
   return (
-    <div className="w-full">
-      <div className="py-3">
-        <h3 className="text-sm font-medium text-gray-500 mb-2">任务列表</h3>
-        <div className="flex flex-wrap gap-2 justify-start">
-          {tasks.map((task) => (
-            <div
-              key={task._id.toString()}
-              className="flex items-center justify-between p-2 bg-gray-50 rounded min-w-[200px] max-w-[300px]"
-            >
-              <div className="flex items-center space-x-2 flex-1 min-w-0">
-                {getStatusIcon(task.status)}
-                <span className="text-sm font-medium truncate">
-                  {task.type === 'content' ? '生成内容' :
-                   task.type === 'summary' ? '生成摘要' :
-                   task.type === 'outline' ? '生成大纲' :
-                   '优化内容'}
-                </span>
-              </div>
-              <div className="flex items-center space-x-2 flex-shrink-0">
-                <span className="text-sm text-gray-500 whitespace-nowrap">
-                  {getStatusText(task.status)}
-                </span>
-                {task.result && task.result.startsWith('Error:') && (
-                  <span className="text-sm text-red-500" title={task.result}>
-                    <AlertCircle className="w-4 h-4" />
-                  </span>
-                )}
-                {task.status === 'pending' && (
-                  <button
-                    onClick={() => handleExecuteTask(task._id.toString())}
-                    className="text-gray-400 hover:text-green-500"
-                    title="执行任务"
-                  >
-                    <Play className="w-4 h-4" />
-                  </button>
-                )}
-                {task.status === 'completed' && task.result && !task.result.startsWith('Error:') && (
-                  <button
-                    onClick={() => handleApplyTask(task)}
-                    className="text-gray-400 hover:text-blue-500"
-                    title="应用结果"
-                  >
-                    <Check className="w-4 h-4" />
-                  </button>
-                )}
+    <div className="flex flex-wrap gap-2">
+      {tasks.map(task => (
+        <div
+          key={task._id.toString()}
+          className="min-w-[200px] max-w-[300px] p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              {getStatusIcon(task.status)}
+              <span className="text-sm font-medium">{getStatusText(task.status)}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              {task.status === 'completed' && (
                 <button
-                  onClick={() => handleDeleteTask(task._id.toString())}
-                  disabled={deletingTaskId === task._id.toString()}
-                  className="text-gray-400 hover:text-red-500 disabled:opacity-50 flex-shrink-0"
+                  onClick={() => setPreviewTask(task)}
+                  className="p-1 text-gray-500 hover:text-gray-700"
+                  title="预览结果"
                 >
-                  {deletingTaskId === task._id.toString() ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-4 h-4" />
-                  )}
+                  <Eye className="w-4 h-4" />
                 </button>
+              )}
+              {task.status === 'completed' && (
+                <button
+                  onClick={() => handleApplyTask(task)}
+                  className="p-1 text-green-500 hover:text-green-700"
+                  title="应用结果"
+                >
+                  <Check className="w-4 h-4" />
+                </button>
+              )}
+              {task.status === 'pending' && (
+                <button
+                  onClick={() => handleExecuteTask(task._id.toString())}
+                  className="p-1 text-blue-500 hover:text-blue-700"
+                  title="执行任务"
+                >
+                  <Play className="w-4 h-4" />
+                </button>
+              )}
+              <button
+                onClick={() => handleCopyTask(task)}
+                className="p-1 text-gray-500 hover:text-gray-700"
+                title="复制任务"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleDeleteTask(task._id.toString())}
+                className="p-1 text-red-500 hover:text-red-700"
+                title="删除任务"
+                disabled={deletingTaskId === task._id.toString()}
+              >
+                {deletingTaskId === task._id.toString() ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </div>
+          <div className="text-sm text-gray-600 mb-2">
+            {task.type === 'content' && '生成内容'}
+            {task.type === 'outline' && '生成大纲'}
+            {task.type === 'improve' && '优化内容'}
+            {task.type === 'summary' && '生成摘要'}
+          </div>
+          {task.result && task.result.startsWith('Error:') && (
+            <div className="text-sm text-red-500 mb-2">
+              {task.result}
+            </div>
+          )}
+          <div className="text-xs text-gray-400">
+            {new Date(task.createdAt).toLocaleString()}
+          </div>
+        </div>
+      ))}
+
+      {/* 预览弹窗 */}
+      {previewTask && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white w-full h-full flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-xl font-semibold">任务结果预览</h2>
+              <button
+                onClick={() => setPreviewTask(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <div className="prose max-w-none">
+                <pre className="whitespace-pre-wrap">{previewTask.result}</pre>
               </div>
             </div>
-          ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* 任务对话框 */}
+      {selectedTask && (
+        <TaskDialog
+          projectId={projectId}
+          docId={docId}
+          type={selectedTask.type}
+          isOpen={isTaskDialogOpen}
+          defaultPrompt={selectedTask.prompt}
+          onClose={() => {
+            setIsTaskDialogOpen(false);
+            setSelectedTask(null);
+          }}
+          onTaskCreated={() => {
+            setIsTaskDialogOpen(false);
+            setSelectedTask(null);
+            fetchTasks();
+          }}
+          relatedDocs={selectedTask.relatedDocs?.map(id => id.toString()) || []}
+          relatedSummaries={selectedTask.relatedSummaries?.map(id => id.toString()) || []}
+        />
+      )}
     </div>
   );
 } 

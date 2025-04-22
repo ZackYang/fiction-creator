@@ -2,16 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { State } from '@/lib/states';
+import { Type } from '@/lib/types';
 import toast from 'react-hot-toast';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 interface TaskDialogProps {
   projectId: string;
   docId: string;
-  type: 'content' | 'summary' | 'outline' | 'optimize';
+  type?: 'content' | 'summary' | 'outline' | 'improve';
   isOpen: boolean;
   onClose: () => void;
   onTaskCreated?: () => void;
+  relatedDocs?: string[];
+  relatedSummaries?: string[];
+  defaultPrompt?: string;
 }
 
 interface DocWithChildren extends State.Doc {
@@ -62,13 +66,22 @@ const getDocTypeIcon = (type: string) => {
   }
 };
 
-export default function TaskDialog({ projectId, docId, type, isOpen, onClose, onTaskCreated }: TaskDialogProps) {
+export default function TaskDialog({ 
+  projectId, 
+  docId, 
+  type, 
+  isOpen, 
+  onClose, 
+  onTaskCreated,
+  relatedDocs = [],
+  relatedSummaries = [],
+  defaultPrompt = ''
+}: TaskDialogProps) {
   const [docs, setDocs] = useState<State.Doc[]>([]);
-  const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
-  const [selectedSummaries, setSelectedSummaries] = useState<string[]>([]);
-  const [selectedOutlines, setSelectedOutlines] = useState<string[]>([]);
-  const [selectedContents, setSelectedContents] = useState<string[]>([]);
-  const [prompt, setPrompt] = useState('');
+  const [selectedDocs, setSelectedDocs] = useState<string[]>(relatedDocs);
+  const [selectedSummaries, setSelectedSummaries] = useState<string[]>(relatedSummaries);
+  const [selectedType, setSelectedType] = useState<Type.Task['type']>(type || 'content');
+  const [prompt, setPrompt] = useState(defaultPrompt);
   const [isLoading, setIsLoading] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
   const [currentDoc, setCurrentDoc] = useState<State.Doc | null>(null);
@@ -77,21 +90,20 @@ export default function TaskDialog({ projectId, docId, type, isOpen, onClose, on
     if (isOpen) {
       fetchDocs();
       fetchCurrentDoc();
+      setSelectedDocs(relatedDocs);
+      setSelectedSummaries(relatedSummaries);
     }
   }, [isOpen]);
 
   const fetchDocs = async () => {
     try {
-      console.log('Fetching docs for project:', projectId);
       const response = await fetch(`/api/projects/${projectId}/docs`);
-      console.log('API Response:', response);
       
       if (!response.ok) {
         throw new Error('Failed to fetch docs');
       }
       
       const data = await response.json();
-      console.log('API Data:', data);
       
       if (!data.success) {
         throw new Error(data.message || 'Failed to fetch docs');
@@ -104,7 +116,6 @@ export default function TaskDialog({ projectId, docId, type, isOpen, onClose, on
       // 首先将所有文档添加到 map 中
       data.data.forEach((doc: any) => {
         const docId = doc._id.toString();
-        console.log('Adding doc to map:', docId, doc.title);
         docsMap.set(docId, {
           ...doc,
           id: docId,
@@ -118,28 +129,21 @@ export default function TaskDialog({ projectId, docId, type, isOpen, onClose, on
         const docWithChildren = docsMap.get(docId)!;
         const parentDocId = doc.parentDocId?.toString();
         
-        console.log('Processing doc:', docId, doc.title, 'parent:', parentDocId);
-        
         if (parentDocId) {
           const parent = docsMap.get(parentDocId);
           if (parent) {
-            console.log('Adding child to parent:', parentDocId, parent.title);
             parent.children = parent.children || [];
             parent.children.push(docWithChildren);
           } else {
-            console.log('Parent not found:', parentDocId);
             rootDocs.push(docWithChildren);
           }
         } else {
-          console.log('Adding to root docs:', docId, doc.title);
           rootDocs.push(docWithChildren);
         }
       });
       
-      console.log('Final docs tree:', rootDocs);
       setDocs(rootDocs);
     } catch (error) {
-      console.error('Failed to fetch docs:', error);
       toast.error('Failed to load documents');
     } finally {
       setIsLoading(false);
@@ -164,32 +168,29 @@ export default function TaskDialog({ projectId, docId, type, isOpen, onClose, on
   const getTaskTitle = () => {
     if (!currentDoc) return '创建任务';
     
-    const typeText = type === 'content' ? '生成' : 
-                    type === 'summary' ? '摘要' : 
-                    type === 'outline' ? '大纲' : 
-                    '优化';
+    const typeText = selectedType === 'content' ? '生成' : 
+                    selectedType === 'summary' ? '摘要' : 
+                    selectedType === 'outline' ? '大纲' :
+                    selectedType === 'improve' ? '优化' :
+                    '生成';
     
     return `${typeText} ${currentDoc.title}`;
   };
 
   const handleDocSelect = (docId: string) => {
-    console.log('Selecting doc:', docId);
     setSelectedDocs(prev => {
       const newSelected = prev.includes(docId) 
         ? prev.filter(id => id !== docId)
         : [...prev, docId];
-      console.log('New selected docs:', newSelected);
       return newSelected;
     });
   };
 
   const handleSummarySelect = (docId: string) => {
-    console.log('Selecting summary:', docId);
     setSelectedSummaries(prev => {
       const newSelected = prev.includes(docId) 
         ? prev.filter(id => id !== docId)
         : [...prev, docId];
-      console.log('New selected summaries:', newSelected);
       return newSelected;
     });
   };
@@ -204,13 +205,10 @@ export default function TaskDialog({ projectId, docId, type, isOpen, onClose, on
         body: JSON.stringify({
           projectId,
           docId,
-          type,
-          context: {
-            selectedDocs,
-            selectedSummaries,
-            selectedOutlines,
-            selectedContents,
-          },
+          type: selectedType,
+          prompt,
+          relatedDocs: selectedDocs,
+          relatedSummaries: selectedSummaries,
         }),
       });
 
@@ -228,7 +226,6 @@ export default function TaskDialog({ projectId, docId, type, isOpen, onClose, on
       onClose();
       onTaskCreated?.();
     } catch (error) {
-      console.error('Error creating task:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to create task');
     }
   };
@@ -248,8 +245,6 @@ export default function TaskDialog({ projectId, docId, type, isOpen, onClose, on
   };
 
   const renderSelectedList = (items: string[], isSummary: boolean) => {
-    console.log('Rendering selected list:', items, 'isSummary:', isSummary);
-    console.log('Available docs:', docs);
     return (
       <Droppable 
         droppableId={isSummary ? 'summary-list' : 'doc-list'} 
@@ -281,7 +276,6 @@ export default function TaskDialog({ projectId, docId, type, isOpen, onClose, on
               };
               
               const doc = findDoc(docs);
-              console.log('Rendering selected item:', docId, 'doc:', doc);
               if (!doc) return null;
               
               return (
@@ -355,7 +349,6 @@ export default function TaskDialog({ projectId, docId, type, isOpen, onClose, on
           }`}
           onClick={() => {
             if (isCurrentDoc) return;
-            console.log('Doc clicked:', doc.id, 'isSummaryList:', isSummaryList);
             if (isSummaryList) {
               handleSummarySelect(doc.id!);
             } else {
@@ -431,6 +424,19 @@ export default function TaskDialog({ projectId, docId, type, isOpen, onClose, on
         <div className="flex-1 overflow-y-auto p-4">
           <DragDropContext onDragEnd={handleDragEnd}>
             <div className="grid grid-cols-5 gap-4 h-full">
+              <div className="col-span-5 mb-4">
+                <label className="block text-sm font-medium mb-2">任务类型</label>
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value as Type.Task['type'])}
+                  className="w-full p-2 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="content">生成内容</option>
+                  <option value="summary">生成摘要</option>
+                  <option value="outline">生成大纲</option>
+                  <option value="improve">优化内容</option>
+                </select>
+              </div>
               <div className="col-span-4 grid grid-cols-4 gap-4">
                 <div className="flex flex-col h-full">
                   <label className="block text-sm font-medium mb-2">相关文档</label>
@@ -456,33 +462,31 @@ export default function TaskDialog({ projectId, docId, type, isOpen, onClose, on
                   )}
                 </div>
 
-                {type === 'summary' && (
-                  <>
-                    <div className="flex flex-col h-full">
-                      <label className="block text-sm font-medium mb-2">相关摘要</label>
-                      {isLoading ? (
-                        <div className="text-center py-4">加载摘要中...</div>
-                      ) : docs.length === 0 ? (
-                        <div className="text-center py-4">暂无摘要</div>
-                      ) : (
-                        <div className="flex-1 overflow-y-auto border rounded p-2 bg-white">
-                          {docs.map(doc => renderDocItem(doc, 0, true))}
-                        </div>
-                      )}
-                    </div>
+                <>
+                  <div className="flex flex-col h-full">
+                    <label className="block text-sm font-medium mb-2">相关摘要</label>
+                    {isLoading ? (
+                      <div className="text-center py-4">加载摘要中...</div>
+                    ) : docs.length === 0 ? (
+                      <div className="text-center py-4">暂无摘要</div>
+                    ) : (
+                      <div className="flex-1 overflow-y-auto border rounded p-2 bg-white">
+                        {docs.map(doc => renderDocItem(doc, 0, true))}
+                      </div>
+                    )}
+                  </div>
 
-                    <div className="flex flex-col h-full">
-                      <label className="block text-sm font-medium mb-2">已选摘要</label>
-                      {selectedSummaries.length === 0 ? (
-                        <div className="text-center py-4 text-gray-500">请从左侧选择摘要</div>
-                      ) : (
-                        <div className="flex-1 overflow-y-auto border rounded p-2 bg-white">
-                          {renderSelectedList(selectedSummaries, true)}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
+                  <div className="flex flex-col h-full">
+                    <label className="block text-sm font-medium mb-2">已选摘要</label>
+                    {selectedSummaries.length === 0 ? (
+                      <div className="text-center py-4 text-gray-500">请从左侧选择摘要</div>
+                    ) : (
+                      <div className="flex-1 overflow-y-auto border rounded p-2 bg-white">
+                        {renderSelectedList(selectedSummaries, true)}
+                      </div>
+                    )}
+                  </div>
+                </>
               </div>
 
               <div className="flex flex-col h-full">

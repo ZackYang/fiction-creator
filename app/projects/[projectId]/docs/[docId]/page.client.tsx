@@ -28,7 +28,7 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-
+  const [taskType, setTaskType] = useState<Type.Task['type'] | null>(null);
   useEffect(() => {
     fetchDoc();
   }, [projectId, docId]);
@@ -122,6 +122,12 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
   };
 
   const handleCreateSummaryTask = () => {
+    setTaskType('summary');
+    setIsTaskDialogOpen(true);
+  };
+
+  const handleCreateContentTask = () => {
+    setTaskType(null);
     setIsTaskDialogOpen(true);
   };
 
@@ -254,6 +260,12 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
             
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium">内容</label>
+                <button
+                  onClick={handleCreateContentTask}
+                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  AI生成
+                </button>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <span>中文字数: {getWordCount(content).chinese}</span>
                   <span>|</span>
@@ -275,12 +287,6 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium">摘要</label>
-                <button
-                  onClick={handleCreateSummaryTask}
-                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  Create Summary Task
-                </button>
               </div>
               <textarea
                 value={summary}
@@ -298,7 +304,7 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
           <TaskDialog
             projectId={doc?.projectId.toString() || ''}
             docId={doc?._id.toString() || ''}
-            type="summary"
+            type={taskType as Type.Task['type']}
             isOpen={isTaskDialogOpen}
             onClose={() => setIsTaskDialogOpen(false)}
             onTaskCreated={handleTaskCreated}

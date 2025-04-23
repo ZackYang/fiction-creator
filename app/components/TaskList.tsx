@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Type } from '@/lib/types';
 import toast from 'react-hot-toast';
-import { Clock, CheckCircle2, AlertCircle, Loader2, Trash2, Play, Check, Eye, Copy } from 'lucide-react';
+import { Clock, CheckCircle2, AlertCircle, Loader2, Trash2, Play, Check, Eye, Pencil } from 'lucide-react';
 import TaskDialog from './TaskDialog';
-
+import { State } from '@/lib/states';
+import NewTask from './NewTask';
 interface TaskListProps {
   projectId: string;
   docId: string;
@@ -13,15 +13,19 @@ interface TaskListProps {
 }
 
 export default function TaskList({ projectId, docId, refreshKey }: TaskListProps) {
-  const [tasks, setTasks] = useState<Type.Task[]>([]);
+  const [tasks, setTasks] = useState<State.Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
-  const [previewTask, setPreviewTask] = useState<Type.Task | null>(null);
+  const [previewTask, setPreviewTask] = useState<State.Task | null>(null);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Type.Task | null>(null);
+  const [selectedTask, setSelectedTask] = useState<State.Task | null>(null);
+  const [project, setProject] = useState<State.Project | null>(null);
+  const [doc, setDoc] = useState<State.Doc | null>(null);
 
   useEffect(() => {
     fetchTasks();
+    fetchProject();
+    fetchDoc();
   }, [projectId, docId, refreshKey]);
 
   const fetchTasks = async () => {
@@ -35,8 +39,8 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
         throw new Error(data.message || 'Failed to fetch tasks');
       }
       // 按创建时间降序排序
-      const sortedTasks = (data.data || []).sort((a: Type.Task, b: Type.Task) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      const sortedTasks = (data.data || []).sort((a: State.Task, b: State.Task) => 
+        new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime()
       );
       setTasks(sortedTasks);
     } catch (error) {
@@ -46,6 +50,24 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
       setLoading(false);
     }
   };
+
+  const fetchProject = async () => {
+    const response = await fetch(`/api/projects/${projectId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch project');
+    }
+    const data = await response.json();
+    setProject(data.data);
+  }
+
+  const fetchDoc = async () => {
+    const response = await fetch(`/api/projects/${projectId}/docs/${docId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch doc');
+    }
+    const data = await response.json();
+    setDoc(data.data);
+  }
 
   const handleDeleteTask = async (taskId: string) => {
     if (!confirm('确定要删除这个任务吗？')) return;
@@ -100,7 +122,7 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
     }
   };
 
-  const handleApplyTask = async (task: Type.Task) => {
+  const handleApplyTask = async (task: State.Task) => {
     try {
       const response = await fetch(`/api/projects/${projectId}/docs/${docId}`, {
         method: 'PUT',
@@ -132,7 +154,7 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
     }
   };
 
-  const handleCopyTask = (task: Type.Task) => {
+  const handleEditTask = (task: State.Task) => {
     setSelectedTask(task);
     setIsTaskDialogOpen(true);
   };
@@ -175,21 +197,17 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
     );
   }
 
-  if (tasks.length === 0) {
-    return null;
-  }
-
   return (
     <div className="flex flex-wrap gap-2">
       {tasks.map(task => (
         <div
-          key={task._id.toString()}
+          key={task._id?.toString() || ''}
           className="min-w-[200px] max-w-[300px] p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow"
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              {getStatusIcon(task.status)}
-              <span className="text-sm font-medium">{getStatusText(task.status)}</span>
+              {getStatusIcon(task.status || '')}
+              <span className="text-sm font-medium">{getStatusText(task.status || '')}</span>
             </div>
             <div className="flex items-center gap-1">
               {task.status === 'completed' && (
@@ -210,29 +228,29 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
                   <Check className="w-4 h-4" />
                 </button>
               )}
-              {task.status === 'pending' && (
+              {(task.status === 'pending' || task.status === 'completed') && (
                 <button
-                  onClick={() => handleExecuteTask(task._id.toString())}
+                  onClick={() => handleExecuteTask(task._id?.toString() || '')}
                   className="p-1 text-blue-500 hover:text-blue-700"
-                  title="执行任务"
+                  title={task.status === 'completed' ? '重新执行' : '执行任务'}
                 >
                   <Play className="w-4 h-4" />
                 </button>
               )}
               <button
-                onClick={() => handleCopyTask(task)}
+                onClick={() => handleEditTask(task)}
                 className="p-1 text-gray-500 hover:text-gray-700"
-                title="复制任务"
+                title="编辑任务"
               >
-                <Copy className="w-4 h-4" />
+                <Pencil className="w-4 h-4" />
               </button>
               <button
-                onClick={() => handleDeleteTask(task._id.toString())}
+                onClick={() => handleDeleteTask(task._id?.toString() || '')}
                 className="p-1 text-red-500 hover:text-red-700"
                 title="删除任务"
-                disabled={deletingTaskId === task._id.toString()}
+                disabled={deletingTaskId === task._id?.toString()}
               >
-                {deletingTaskId === task._id.toString() ? (
+                {deletingTaskId === task._id?.toString() ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Trash2 className="w-4 h-4" />
@@ -252,10 +270,19 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
             </div>
           )}
           <div className="text-xs text-gray-400">
-            {new Date(task.createdAt).toLocaleString()}
+            {task.createdAt ? new Date(task.createdAt).toLocaleString() : ''}
           </div>
         </div>
       ))}
+
+      {project && (
+        <NewTask
+          projectId={projectId}
+          docId={docId}
+          taskConfig={doc?.taskConfig || project.taskConfig}
+          onTaskCreated={() => fetchTasks()}
+        />
+      )}
 
       {/* 预览弹窗 */}
       {previewTask && (
@@ -284,22 +311,18 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
         <TaskDialog
           projectId={projectId}
           docId={docId}
-          type={selectedTask.type}
           isOpen={isTaskDialogOpen}
-          defaultPrompt={selectedTask.prompt}
+          task={selectedTask}
           onClose={() => {
             setIsTaskDialogOpen(false);
             setSelectedTask(null);
           }}
-          onTaskCreated={() => {
+          onTaskUpdated={(task: State.Task) => {
             setIsTaskDialogOpen(false);
-            setSelectedTask(null);
-            fetchTasks();
+            setSelectedTask(task);
           }}
-          relatedDocs={selectedTask.relatedDocs?.map(id => id.toString()) || []}
-          relatedSummaries={selectedTask.relatedSummaries?.map(id => id.toString()) || []}
         />
       )}
     </div>
   );
-} 
+}

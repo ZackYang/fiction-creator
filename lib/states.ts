@@ -2,32 +2,42 @@
 
 export namespace State {
   export type Project = {
-    id?: string;
+    _id?: string;
     name?: string;
-    taskConfigs?: TaskConfig[];
+    taskConfig: TaskConfig;
     tasks?: Task[];
     createdAt?: Date;
     updatedAt?: Date;
   };
 
+  export type DocType = 'article' | 'character' | 'organization' | 'background' | 'event' | 'item' | 'location' | 'ability' | 'spell' | 'other';
+
   export type Doc = {
-    id?: string;
+    _id?: string;
     title?: string;
-    description?: string;
+    type?: DocType;
+    taskConfig?: TaskConfig;
+    tasks?: Task[];
+    content?: string;
+    summary?: string;
+    projectId?: string;
+    parentDocId?: string;
+    priority?: number;
     createdAt?: Date;
     updatedAt?: Date;
   };
 
   export type TaskConfig = {
-    id?: string;
-    prompt?: string;
-    context?: string;
-    type?: string;
-    status?: string;
+    _id?: string;
+    relatedDocs?: string[];
+    relatedSummaries?: string[];
   }
 
   export type Task = TaskConfig & {
-    id?: string;
+    _id?: string;
+    type?: string;
+    status?: string;
+    prompt?: string;
     result?: string;
     projectId?: string;
     docId?: string;

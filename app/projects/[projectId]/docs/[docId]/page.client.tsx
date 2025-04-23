@@ -3,13 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Type } from '@/lib/types';
+import { State } from '@/lib/states';
 import dynamic from 'next/dynamic';
 import '@uiw/react-md-editor/markdown-editor.css';
 import '@uiw/react-markdown-preview/markdown.css';
-import TaskDialog from '@/app/components/TaskDialog';
 import TaskList from '@/app/components/TaskList';
-
+import TaskConfigPanel from '@/app/components/TaskConfigPanel';
 const MDEditor = dynamic(
   () => import('@uiw/react-md-editor').then((mod) => mod.default),
   { ssr: false }
@@ -17,18 +16,21 @@ const MDEditor = dynamic(
 
 export default function DocEditor({ projectId, docId }: { projectId: string; docId: string }) {
   const router = useRouter();
-  const [doc, setDoc] = useState<Type.Doc | null>(null);
+  const [doc, setDoc] = useState<State.Doc | null>(null);
   const [title, setTitle] = useState('');
-  const [type, setType] = useState<Type.DocType>('other');
+  const [type, setType] = useState<State.DocType>('other');
   const [content, setContent] = useState('');
   const [summary, setSummary] = useState('');
   const [priority, setPriority] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [taskType, setTaskType] = useState<Type.Task['type'] | null>(null);
+  const [taskConfig, setTaskConfig] = useState<State.TaskConfig>({
+    relatedDocs: [],
+    relatedSummaries: []
+  });
+
   useEffect(() => {
     fetchDoc();
   }, [projectId, docId]);
@@ -44,11 +46,15 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
         throw new Error(data.message || 'Failed to fetch doc');
       }
       setDoc(data.data);
-      setTitle(data.data.title);
-      setType(data.data.type);
+      setTitle(data.data.title || '');
+      setType(data.data.type || 'other');
       setContent(data.data.content || '');
       setSummary(data.data.summary || '');
       setPriority(data.data.priority || 0);
+      setTaskConfig({
+        relatedDocs: data.data.taskConfig?.relatedDocs || [],
+        relatedSummaries: data.data.taskConfig?.relatedSummaries || []
+      });
     } catch (error) {
       console.error('Error fetching doc:', error);
       toast.error('Failed to load document');
@@ -73,6 +79,7 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
           content,
           summary,
           priority,
+          taskConfig,
         }),
       });
 
@@ -121,16 +128,6 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
     }
   };
 
-  const handleCreateSummaryTask = () => {
-    setTaskType('summary');
-    setIsTaskDialogOpen(true);
-  };
-
-  const handleCreateContentTask = () => {
-    setTaskType(null);
-    setIsTaskDialogOpen(true);
-  };
-
   const handleTaskCreated = () => {
     setRefreshKey(prev => prev + 1);
   };
@@ -154,6 +151,15 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
       english: englishCount,
       total: chineseCount + englishCount
     };
+  };
+
+  const handleConfigChange = (config: State.TaskConfig) => {
+    console.log('handleConfigChange', config);
+
+    setTaskConfig({
+      relatedDocs: config.relatedDocs || [],
+      relatedSummaries: config.relatedSummaries || []
+    });
   };
 
   if (isLoading) {
@@ -193,7 +199,9 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
       <div className="flex-1 overflow-auto">
         <div className="flex flex-col h-full p-6">
           <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold">Document Editor</h1>
+            <h1 className="text-2xl font-bold">
+              {doc.title || '未命名文档'}
+            </h1>
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
@@ -228,7 +236,7 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
                 <label className="block text-sm font-medium mb-1">类型</label>
                 <select
                   value={type}
-                  onChange={(e) => setType(e.target.value as Type.DocType)}
+                  onChange={(e) => setType(e.target.value as State.DocType)}
                   className="w-full p-2 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="article">文章</option>
@@ -256,16 +264,10 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
               </div>
             </div>
             <TaskList projectId={projectId} docId={docId} refreshKey={refreshKey} />
+            <TaskConfigPanel projectId={projectId} config={taskConfig} onConfigChange={handleConfigChange} />
             <div className="flex flex-col gap-4">
-            
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium">内容</label>
-                <button
-                  onClick={handleCreateContentTask}
-                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  AI生成
-                </button>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <span>中文字数: {getWordCount(content).chinese}</span>
                   <span>|</span>
@@ -288,29 +290,25 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium">摘要</label>
               </div>
-              <textarea
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
-                className="w-full h-32 p-2 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              />
+              <div
+                className="w-full p-2 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              >
+                <MDEditor
+                  value={summary}
+                  onChange={(value) => setSummary(value || '')}
+                  height={300}
+                  preview="live"
+                />
+              </div>
             </div>
 
             <div className="text-sm text-gray-500">
-              <p>创建时间: {new Date(doc.createdAt).toLocaleString()}</p>
-              <p>最后更新: {new Date(doc.updatedAt).toLocaleString()}</p>
+              <p>创建时间: {doc.createdAt ? new Date(doc.createdAt).toLocaleString() : ''}</p>
+              <p>最后更新: {doc.updatedAt ? new Date(doc.updatedAt).toLocaleString() : ''}</p>
             </div>
           </div>
-
-          <TaskDialog
-            projectId={doc?.projectId.toString() || ''}
-            docId={doc?._id.toString() || ''}
-            type={taskType as Type.Task['type']}
-            isOpen={isTaskDialogOpen}
-            onClose={() => setIsTaskDialogOpen(false)}
-            onTaskCreated={handleTaskCreated}
-          />
         </div>
       </div>
     </div>
   );
-} 
+}

@@ -10,7 +10,7 @@ const createTaskSchema = z.object({
   type: z.enum(['content', 'summary', 'outline', 'improve']),
   relatedDocs: z.array(z.string()).default([]),
   relatedSummaries: z.array(z.string()).default([]),
-  prompt: z.string().optional(),
+  prompt: z.string().optional()
 });
 
 // 创建新任务

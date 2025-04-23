@@ -11,6 +11,10 @@ const updateDocSchema = z.object({
   content: z.string().optional(),
   summary: z.string().optional(),
   priority: z.number().optional(),
+  taskConfig: z.object({
+    relatedDocs: z.array(z.string()).transform(arr => arr.map(id => new ObjectId(id))).optional(),
+    relatedSummaries: z.array(z.string()).transform(arr => arr.map(id => new ObjectId(id))).optional(),
+  }).optional(),
 });
 
 export async function GET(
@@ -80,6 +84,7 @@ export async function PUT(
       {
         $set: {
           updatedAt: new Date(),
+          ...validatedData,
         },
       }
     );

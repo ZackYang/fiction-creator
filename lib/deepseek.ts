@@ -1,4 +1,4 @@
-import { generateUserMessages, generateUserPrompt } from './promptGenerator';
+import { generateUserMessages, generateUserPrompt, systemPrompt } from './promptGenerator';
 import { Type } from './types';
 
 interface DeepSeekResponse {
@@ -131,7 +131,7 @@ export class DeepSeekClient {
   ): Promise<string> {
     const {
       model = DEEPSEEK_MODEL,
-      max_tokens = -1,
+      max_tokens = 8000,
       temperature = 0.2,
       top_p = 1,
       frequency_penalty = 0,
@@ -139,16 +139,19 @@ export class DeepSeekClient {
       stream = false,
     } = options;
 
-    console.log('task');
-    console.log(task);
+    console.log('Generating completion for task:', {
+      taskId: task._id,
+      type: task.type,
+      docId: task.docId
+    });
     
     const userMessages = await generateUserMessages(task);
     const prompt = await generateUserPrompt(task);
 
-    console.log('userMessages');
-    console.log(userMessages);
-    console.log('prompt');
-    console.log(prompt);
+    console.log('Generated messages:', {
+      userMessagesLength: userMessages.length,
+      promptLength: prompt.length
+    });
 
     try {
       const response: DeepSeekResponse = await this.request('/chat/completions', {
@@ -158,16 +161,12 @@ export class DeepSeekClient {
           messages: [
             {
               role: 'system',
-              content: '你是一个专业的写作助手，请根据以下要求完成任务：\n\n',
+              content: systemPrompt(),
             },
             {
               role: 'user',
-              content: userMessages,
-            },
-            {
-              role: 'user',
-              content: prompt,
-            },
+              content: userMessages + '\n\n' + prompt,
+            }
           ],
           max_tokens,
           temperature,
@@ -178,9 +177,16 @@ export class DeepSeekClient {
         }),
       });
 
+      if (!response.choices?.[0]?.message?.content) {
+        throw new Error('No content in response');
+      }
+
       return response.choices[0].message.content;
     } catch (error) {
       console.error('DeepSeek API Error:', error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to generate completion: ${error.message}`);
+      }
       throw error;
     }
   }

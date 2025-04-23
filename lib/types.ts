@@ -4,7 +4,7 @@ export namespace Type {
   export type Project = WithId<{
     name: string;
     tasks: Task[];
-    taskConfigs: TaskConfig[];
+    taskConfig: TaskConfig;
     createdAt: Date;
     updatedAt: Date;
     author: string;
@@ -16,13 +16,13 @@ export namespace Type {
     _id: ObjectId;
     title: string;
     type: DocType;
+    taskConfig: TaskConfig;
+    tasks: Task[];
     content: string;
     summary: string;
     projectId: ObjectId;
     parentDocId?: ObjectId;
     priority: number;
-    relatedDocs: ObjectId[];
-    relatedSummaries: ObjectId[];
     createdAt: Date;
     updatedAt: Date;
   }
@@ -30,12 +30,12 @@ export namespace Type {
   export type TaskConfig = {
     relatedDocs?: ObjectId[];
     relatedSummaries?: ObjectId[];
-    prompt?: string;
   }
 
   // extend TaskConfig to Task
   export type Task = WithId<TaskConfig & {
     _id: ObjectId;
+    prompt?: string;
     status: 'pending' | 'generating' | 'completed' | 'failed';
     type: 'content' | 'summary' | 'outline' | 'improve' | 'general';
     result: string;

@@ -22,15 +22,7 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'Task not found' }, { status: 404 });
     }
 
-    // 检查任务状态
-    if (task.status !== 'pending') {
-      return NextResponse.json({ 
-        success: false, 
-        message: `Task is already ${task.status}` 
-      }, { status: 400 });
-    }
-
-    const DeepSeek = new DeepSeekClient(process.env.DEEPSEEK_API_KEY || '');
+    const DeepSeek = new DeepSeekClient();
 
     // 更新任务状态为生成中
     await Task.updateOne(

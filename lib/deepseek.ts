@@ -119,6 +119,7 @@ export class DeepSeekClient {
 
   async generateCompletion(
     task: Type.Task,
+    onChunk?: (chunk: string) => void,
     options: {
       model?: string;
       max_tokens?: number;
@@ -132,11 +133,11 @@ export class DeepSeekClient {
     const {
       model = DEEPSEEK_MODEL,
       max_tokens = 8000,
-      temperature = 0.2,
+      temperature = 1.4,
       top_p = 1,
       frequency_penalty = 0,
       presence_penalty = 0,
-      stream = false,
+      stream = true,
     } = options;
 
     console.log('Generating completion for task:', {
@@ -154,8 +155,12 @@ export class DeepSeekClient {
     });
 
     try {
-      const response: DeepSeekResponse = await this.request('/chat/completions', {
+      const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
         body: JSON.stringify({
           model,
           messages: [
@@ -177,11 +182,55 @@ export class DeepSeekClient {
         }),
       });
 
-      if (!response.choices?.[0]?.message?.content) {
-        throw new Error('No content in response');
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Unknown error occurred';
+        try {
+          const error: DeepSeekError = JSON.parse(errorText);
+          errorMessage = error.error?.message || 'Unknown error occurred';
+        } catch (e) {
+          errorMessage = `HTTP error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(`DeepSeek API error: ${errorMessage}`);
       }
 
-      return response.choices[0].message.content;
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+
+            try {
+              const parsed: StreamResponse = JSON.parse(data);
+              const content = parsed.choices[0]?.delta?.content;
+              if (content) {
+                fullContent += content;
+                if (onChunk) {
+                  onChunk(content);
+                }
+              }
+            } catch (e) {
+              console.error('Failed to parse stream data:', e);
+            }
+          }
+        }
+      }
+
+      return fullContent;
     } catch (error) {
       console.error('DeepSeek API Error:', error);
       if (error instanceof Error) {

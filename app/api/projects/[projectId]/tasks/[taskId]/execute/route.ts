@@ -30,20 +30,72 @@ export async function POST(
       { $set: { status: 'generating', updatedAt: new Date() } }
     );
 
-    // 触发任务执行事件
-    const result = await DeepSeek.generateCompletion(task as Type.Task);
+    // 创建流式响应
+    const stream = new TransformStream();
+    const writer = stream.writable.getWriter();
+    const encoder = new TextEncoder();
 
-    console.log(result);
+    // 开始生成内容
+    DeepSeek.generateCompletion(task as Type.Task, async (chunk) => {
+      try {
+        // 将新的内容块写入流
+        await writer.write(encoder.encode(chunk));
+        
+        // 更新任务结果
+        await Task.updateOne(
+          { _id: new ObjectId(taskId) },
+          { 
+            $set: { 
+              result: chunk,
+              updatedAt: new Date()
+            }
+          }
+        );
+      } catch (error) {
+        console.error('Error writing chunk:', error);
+      }
+    }).then(async (finalResult) => {
+      try {
+        // 更新最终状态
+        await Task.updateOne(
+          { _id: new ObjectId(taskId) },
+          { 
+            $set: { 
+              status: 'completed',
+              result: finalResult,
+              updatedAt: new Date()
+            }
+          }
+        );
+        
+        // 关闭流
+        await writer.close();
+      } catch (error) {
+        console.error('Error finalizing task:', error);
+        await writer.abort(error);
+      }
+    }).catch(async (error) => {
+      console.error('Error generating completion:', error);
+      // 更新任务状态为失败
+      await Task.updateOne(
+        { _id: new ObjectId(taskId) },
+        { 
+          $set: { 
+            status: 'failed',
+            result: `Error: ${error instanceof Error ? error.message : 'Failed to generate completion'}`,
+            updatedAt: new Date()
+          }
+        }
+      );
+      await writer.abort(error);
+    });
 
-    await Task.updateOne(
-      { _id: new ObjectId(taskId) },
-      { $set: { status: 'completed', updatedAt: new Date(), result } }
-    );
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Task execution started',
-      data: { taskId }
+    return new Response(stream.readable, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
     });
   } catch (error) {
     console.error('Error executing task:', error);

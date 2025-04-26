@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Clock, CheckCircle2, AlertCircle, Loader2, Trash2, Play, Check, Eye, Pencil } from 'lucide-react';
+import { Clock, CheckCircle2, AlertCircle, Loader2, Trash2, Play, Check, Eye, Pencil, Copy } from 'lucide-react';
 import TaskDialog from './TaskDialog';
 import { State } from '@/lib/states';
 import NewTask from './NewTask';
@@ -109,16 +109,57 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
         throw new Error(errorData.message || 'Failed to execute task');
       }
 
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to execute task');
+      if (!response.body) {
+        throw new Error('No response body');
       }
 
-      toast.success('任务开始执行');
-      fetchTasks();
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedResult = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        accumulatedResult += chunk;
+
+        // 更新任务列表中的结果
+        setTasks(prevTasks => 
+          prevTasks.map(task => 
+            task._id?.toString() === taskId 
+              ? { ...task, result: accumulatedResult, status: 'generating' }
+              : task
+          )
+        );
+      }
+
+      // 最终更新任务状态为完成
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task._id?.toString() === taskId 
+            ? { ...task, status: 'completed' }
+            : task
+        )
+      );
+
+      toast.success('任务执行完成');
     } catch (error) {
       console.error('Error executing task:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to execute task');
+      
+      // 更新任务状态为失败
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task._id?.toString() === taskId 
+            ? { 
+                ...task, 
+                status: 'failed',
+                result: `Error: ${error instanceof Error ? error.message : 'Failed to execute task'}`
+              }
+            : task
+        )
+      );
     }
   };
 
@@ -151,6 +192,41 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
     } catch (error) {
       console.error('Error applying task result:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to apply task result');
+    }
+  };
+
+  const handleCopyTask = async (task: State.Task) => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: task.type,
+          prompt: task.prompt,
+          docId: docId,
+          status: 'pending',
+          relatedDocs: task.relatedDocs || [],
+          relatedSummaries: task.relatedSummaries || []
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to copy task');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to copy task');
+      }
+
+      toast.success('任务复制成功');
+      fetchTasks();
+    } catch (error) {
+      console.error('Error copying task:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to copy task');
     }
   };
 
@@ -210,7 +286,7 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
               <span className="text-sm font-medium">{getStatusText(task.status || '')}</span>
             </div>
             <div className="flex items-center gap-1">
-              {task.status === 'completed' && (
+              {task.status !== 'pending' && (
                 <button
                   onClick={() => setPreviewTask(task)}
                   className="p-1 text-gray-500 hover:text-gray-700"
@@ -243,6 +319,13 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
                 title="编辑任务"
               >
                 <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleCopyTask(task)}
+                className="p-1 text-gray-500 hover:text-gray-700"
+                title="复制任务"
+              >
+                <Copy className="w-4 h-4" />
               </button>
               <button
                 onClick={() => handleDeleteTask(task._id?.toString() || '')}
@@ -299,7 +382,9 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
             </div>
             <div className="flex-1 overflow-auto p-4">
               <div className="prose max-w-none">
-                <pre className="whitespace-pre-wrap">{previewTask.result}</pre>
+                <pre className="whitespace-pre-wrap">
+                  {tasks.find(t => t._id?.toString() === previewTask._id?.toString())?.result || previewTask.result}
+                </pre>
               </div>
             </div>
           </div>

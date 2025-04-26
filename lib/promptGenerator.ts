@@ -34,7 +34,11 @@ export async function generateUserPrompt(task: Type.Task): Promise<string> {
   if (type === 'content' && !task.prompt) {
     throw new Error('content must have a prompt');
   } else if (type === 'content' && task.prompt) {
-    return task.prompt;
+    if (currentDoc?.content) {
+      return `这是当前文档的已有内容：\n\n${currentDoc.content}\n\n${task.prompt}`;
+    } else {
+      return task.prompt;
+    }
   } else if (type === 'improve') {
     return `请根据以下本章内容，提出分析或者优化建议：\n\n${currentDoc?.content} \n\n
 请返回markdown格式。\n

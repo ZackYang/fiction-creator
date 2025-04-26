@@ -29,13 +29,34 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
   const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [taskConfig, setTaskConfig] = useState<State.TaskConfig>({
-    relatedDocs: [],
-    relatedSummaries: []
+    relatedDocs: []
   });
+  const [activeTab, setActiveTab] = useState('content');
+
+  const tabs = [
+    { id: 'content', label: '内容', value: content },
+    { id: 'summary', label: '摘要', value: summary },
+    { id: 'synopsis', label: '梗概', value: doc?.synopsis },
+    { id: 'outline', label: '大纲', value: doc?.outline },
+    { id: 'improvement', label: '优化', value: doc?.improvement },
+    { id: 'notes', label: '笔记', value: doc?.notes },
+    { id: 'other', label: '其他', value: doc?.other }
+  ];
 
   useEffect(() => {
     fetchDoc();
   }, [projectId, docId]);
+
+  useEffect(() => {
+    const handleRefreshDoc = () => {
+      fetchDoc();
+    };
+
+    window.addEventListener('refreshDoc', handleRefreshDoc);
+    return () => {
+      window.removeEventListener('refreshDoc', handleRefreshDoc);
+    };
+  }, []);
 
   useEffect(() => {
     if (autoSaveTimeout) {
@@ -72,8 +93,7 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
       setSummary(data.data.summary || '');
       setPriority(data.data.priority || 0);
       setTaskConfig({
-        relatedDocs: data.data.taskConfig?.relatedDocs || [],
-        relatedSummaries: data.data.taskConfig?.relatedSummaries || []
+        relatedDocs: data.data.taskConfig?.relatedDocs || [] 
       });
     } catch (error) {
       console.error('Error fetching doc:', error);
@@ -176,8 +196,37 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
 
     setTaskConfig({
       relatedDocs: config.relatedDocs || [],
-      relatedSummaries: config.relatedSummaries || []
     });
+  };
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+  };
+
+  const handleContentChange = (value: string | undefined) => {
+    switch (activeTab) {
+      case 'content':
+        setContent(value || '');
+        break;
+      case 'summary':
+        setSummary(value || '');
+        break;
+      case 'synopsis':
+        setDoc(prev => prev ? { ...prev, synopsis: value || '' } : null);
+        break;
+      case 'outline':
+        setDoc(prev => prev ? { ...prev, outline: value || '' } : null);
+        break;
+      case 'improvement':
+        setDoc(prev => prev ? { ...prev, improvement: value || '' } : null);
+        break;
+      case 'notes':
+        setDoc(prev => prev ? { ...prev, notes: value || '' } : null);
+        break;
+      case 'other':
+        setDoc(prev => prev ? { ...prev, other: value || '' } : null);
+        break;
+    }
   };
 
   if (isLoading) {
@@ -279,6 +328,7 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
                 >
                   <option value="article">文章</option>
                   <option value="character">角色</option>
+                  <option value="group">组</option>
                   <option value="organization">组织</option>
                   <option value="location">地点</option>
                   <option value="item">物品</option>
@@ -301,40 +351,47 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
                 />
               </div>
             </div>
-            <TaskList projectId={projectId} docId={docId} refreshKey={refreshKey} />
             <TaskConfigPanel projectId={projectId} config={taskConfig} onConfigChange={handleConfigChange} />
+            
             <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-medium">内容</label>
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <span>中文字数: {getWordCount(content).chinese}</span>
-                  <span>|</span>
-                  <span>英文单词: {getWordCount(content).english}</span>
-                  <span>|</span>
-                  <span>总计: {getWordCount(content).total}</span>
-                </div>
+              <div className="flex border-b">
+                {tabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id)}
+                    className={`px-4 py-2 text-sm font-medium ${
+                      activeTab === tab.id
+                        ? 'border-b-2 border-blue-500 text-blue-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    } ${
+                      !tab.value || tab.value.trim() === ''
+                        ? 'text-gray-400'
+                        : ''
+                    }`}
+                  >
+                    {
+                      doc[tab.id as keyof State.Doc] &&
+                      <span className="text-xs text-gray-800">
+                        {tab.label}
+                      </span>
+                    }
+                    {
+                      !doc[tab.id as keyof State.Doc] &&
+                      <span className="text-xs text-gray-400">
+                        {tab.label}
+                      </span>
+                    }
+                  </button>
+                ))}
               </div>
+
+              <TaskList projectId={projectId} docId={docId} refreshKey={refreshKey} taskType={activeTab as State.TaskType} />
+              
               <div className="border border-gray-300 rounded overflow-hidden">
                 <MDEditor
-                  value={content}
-                  onChange={(value) => setContent(value || '')}
+                  value={tabs.find(tab => tab.id === activeTab)?.value || ''}
+                  onChange={handleContentChange}
                   height={500}
-                  preview="live"
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-medium">摘要</label>
-              </div>
-              <div
-                className="w-full p-2 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              >
-                <MDEditor
-                  value={summary}
-                  onChange={(value) => setSummary(value || '')}
-                  height={300}
                   preview="live"
                 />
               </div>

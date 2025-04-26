@@ -10,9 +10,10 @@ interface TaskListProps {
   projectId: string;
   docId: string;
   refreshKey?: number;
+  taskType?: State.TaskType;
 }
 
-export default function TaskList({ projectId, docId, refreshKey }: TaskListProps) {
+export default function TaskList({ projectId, docId, refreshKey, taskType }: TaskListProps) {
   const [tasks, setTasks] = useState<State.Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
@@ -26,11 +27,11 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
     fetchTasks();
     fetchProject();
     fetchDoc();
-  }, [projectId, docId, refreshKey]);
+  }, [projectId, docId, refreshKey, taskType]);
 
   const fetchTasks = async () => {
     try {
-      const response = await fetch(`/api/projects/${projectId}/tasks?docId=${docId}`);
+      const response = await fetch(`/api/projects/${projectId}/tasks?docId=${docId}&taskType=${taskType}`);
       if (!response.ok) {
         throw new Error('Failed to fetch tasks');
       }
@@ -344,8 +345,11 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
           <div className="text-sm text-gray-600 mb-2">
             {task.type === 'content' && '生成内容'}
             {task.type === 'outline' && '生成大纲'}
-            {task.type === 'improve' && '优化内容'}
+            {task.type === 'improvement' && '优化内容'}
             {task.type === 'summary' && '生成摘要'}
+            {task.type === 'notes' && '生成笔记'}
+            {task.type === 'other' && '其他'}
+            {task.type === 'synopsis' && '生成梗概'}
           </div>
           {task.result && task.result.startsWith('Error:') && (
             <div className="text-sm text-red-500 mb-2">
@@ -364,13 +368,14 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
           docId={docId}
           taskConfig={doc?.taskConfig || project.taskConfig}
           onTaskCreated={() => fetchTasks()}
+          taskType={taskType}
         />
       )}
 
       {/* 预览弹窗 */}
       {previewTask && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white w-full h-full flex flex-col">
+          <div className="bg-white w-full h-full flex flex-col container mx-auto">
             <div className="flex justify-between items-center p-4 border-b">
               <h2 className="text-xl font-semibold">任务结果预览</h2>
               <button
@@ -398,6 +403,7 @@ export default function TaskList({ projectId, docId, refreshKey }: TaskListProps
           docId={docId}
           isOpen={isTaskDialogOpen}
           task={selectedTask}
+          currentDoc={doc || undefined}
           onClose={() => {
             setIsTaskDialogOpen(false);
             setSelectedTask(null);

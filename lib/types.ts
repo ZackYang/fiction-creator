@@ -10,7 +10,7 @@ export namespace Type {
     author: string;
   }>;
 
-  export type DocType = 'article' | 'character' | 'organization' | 'background' | 'event' | 'item' | 'location' | 'ability' | 'spell' | 'other';
+  export type DocType = 'article' | 'character' | 'organization' | 'background' | 'event' | 'item' | 'location' | 'ability' | 'spell' | 'other' | 'group';
 
   export interface Doc {
     _id: ObjectId;
@@ -28,20 +28,23 @@ export namespace Type {
   }
 
   export type TaskConfig = {
-    relatedDocs?: ObjectId[];
-    relatedSummaries?: ObjectId[];
+    relatedDocs?: {
+      id: ObjectId;
+      type: TaskType;
+    }[];
   }
+
+  export type TaskType = 'content' | 'summary' | 'improvement' | 'synopsis' | 'outline' | 'notes' | 'other';
 
   // extend TaskConfig to Task
   export type Task = WithId<TaskConfig & {
     _id: ObjectId;
     prompt?: string;
     status: 'pending' | 'generating' | 'completed' | 'failed';
-    type: 'content' | 'summary' | 'outline' | 'improve' | 'general';
+    type: TaskType;
     result: string;
     projectId: ObjectId;
     docId: ObjectId;
-    context: string;
     createdAt: Date;
     updatedAt: Date;
   }>

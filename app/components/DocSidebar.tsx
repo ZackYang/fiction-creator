@@ -6,6 +6,62 @@ import { Plus, ChevronRight, ChevronDown, User, Users, BookOpen, Calendar, Packa
 import toast from 'react-hot-toast';
 import { Type } from '@/lib/types';
 
+export const getDocTypeColor = (type: Type.DocType) => {
+  switch (type) {
+    case 'article':
+      return 'bg-blue-50 hover:bg-blue-100';
+    case 'group':
+      return 'bg-gray-50 hover:bg-gray-100';
+    case 'character':
+      return 'bg-purple-50 hover:bg-purple-100';
+    case 'organization':
+      return 'bg-blue-50 hover:bg-blue-100';
+    case 'background':
+      return 'bg-green-50 hover:bg-green-100';
+    case 'event':
+      return 'bg-yellow-50 hover:bg-yellow-100';
+    case 'item':
+      return 'bg-orange-50 hover:bg-orange-100';
+    case 'location':
+      return 'bg-red-50 hover:bg-red-100';
+    case 'ability':
+      return 'bg-indigo-50 hover:bg-indigo-100';
+    case 'spell':
+      return 'bg-pink-50 hover:bg-pink-100';
+    case 'other':
+    default:
+      return 'bg-gray-50 hover:bg-gray-100';
+  }
+};
+
+export const getDocTypeIcon = (type: Type.DocType) => {
+  switch (type) {
+    case 'article':
+      return <Newspaper size={16} className="text-gray-500" />;
+    case 'group':
+      return <Users size={16} className="text-blue-500" />;
+    case 'character':
+      return <User size={16} className="text-purple-500" />;
+    case 'organization':
+      return <Users size={16} className="text-blue-500" />;
+    case 'background':
+      return <BookOpen size={16} className="text-green-500" />;
+    case 'event':
+      return <Calendar size={16} className="text-yellow-500" />;
+    case 'item':
+      return <Package size={16} className="text-orange-500" />;
+    case 'location':
+      return <MapPin size={16} className="text-red-500" />;
+    case 'ability':
+      return <Zap size={16} className="text-indigo-500" />;
+    case 'spell':
+      return <Wand2 size={16} className="text-pink-500" />;
+    case 'other':
+    default:
+      return <FileText size={16} className="text-gray-500" />;
+  }
+};
+
 interface DocSidebarProps {
   projectId: string;
   onDocSelect?: (docId: string) => void;
@@ -19,7 +75,7 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
   const [expandedDocs, setExpandedDocs] = useState<Set<string>>(new Set());
   const [showNewDocDialog, setShowNewDocDialog] = useState(false);
   const [newDocTitle, setNewDocTitle] = useState('');
-  const [newDocType, setNewDocType] = useState<Type.DocType>('other');
+  const [newDocType, setNewDocType] = useState<Type.DocType>('article');
   const [parentDocId, setParentDocId] = useState<string | null>(null);
   const [showSubDocDialog, setShowSubDocDialog] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -111,58 +167,6 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
       }
       return newSet;
     });
-  };
-
-  const getDocTypeColor = (type: Type.DocType) => {
-    switch (type) {
-      case 'article':
-        return 'bg-gray-50 hover:bg-gray-100';
-      case 'character':
-        return 'bg-purple-50 hover:bg-purple-100';
-      case 'organization':
-        return 'bg-blue-50 hover:bg-blue-100';
-      case 'background':
-        return 'bg-green-50 hover:bg-green-100';
-      case 'event':
-        return 'bg-yellow-50 hover:bg-yellow-100';
-      case 'item':
-        return 'bg-orange-50 hover:bg-orange-100';
-      case 'location':
-        return 'bg-red-50 hover:bg-red-100';
-      case 'ability':
-        return 'bg-indigo-50 hover:bg-indigo-100';
-      case 'spell':
-        return 'bg-pink-50 hover:bg-pink-100';
-      case 'other':
-      default:
-        return 'bg-gray-50 hover:bg-gray-100';
-    }
-  };
-
-  const getDocTypeIcon = (type: Type.DocType) => {
-    switch (type) {
-      case 'article':
-        return <Newspaper size={16} className="text-gray-500" />;
-      case 'character':
-        return <User size={16} className="text-purple-500" />;
-      case 'organization':
-        return <Users size={16} className="text-blue-500" />;
-      case 'background':
-        return <BookOpen size={16} className="text-green-500" />;
-      case 'event':
-        return <Calendar size={16} className="text-yellow-500" />;
-      case 'item':
-        return <Package size={16} className="text-orange-500" />;
-      case 'location':
-        return <MapPin size={16} className="text-red-500" />;
-      case 'ability':
-        return <Zap size={16} className="text-indigo-500" />;
-      case 'spell':
-        return <Wand2 size={16} className="text-pink-500" />;
-      case 'other':
-      default:
-        return <FileText size={16} className="text-gray-500" />;
-    }
   };
 
   const renderDocItem = (doc: Type.Doc, level = 0) => {
@@ -351,6 +355,8 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
                   onChange={(e) => setNewDocType(e.target.value as Type.DocType)}
                   className="w-full px-3 py-2 border border-gray-300 rounded"
                 >
+                  <option value="article">Article</option>
+                  <option value="group">Group</option>
                   <option value="character">Character</option>
                   <option value="organization">Organization</option>
                   <option value="background">Background</option>

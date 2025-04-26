@@ -3,13 +3,15 @@ import { db } from '@/lib/db/mongo';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 import { Type } from '@/lib/types';
-
+import { State } from '@/lib/states';
 // 任务创建验证模式
 const createTaskSchema = z.object({
   docId: z.string().min(1, '文档ID不能为空'),
-  type: z.enum(['content', 'summary', 'outline', 'improve']),
-  relatedDocs: z.array(z.string()).default([]),
-  relatedSummaries: z.array(z.string()).default([]),
+  type: z.enum(['content', 'summary', 'outline', 'improvement', 'notes', 'other', 'synopsis']),
+  relatedDocs: z.array(z.object({
+    id: z.string().min(1, '文档ID不能为空'),
+    type: z.enum(['content', 'summary', 'outline', 'improvement', 'notes', 'other', 'synopsis'])
+  })),
   prompt: z.string().optional()
 });
 
@@ -30,12 +32,10 @@ export async function POST(
       _id: new ObjectId(),
       projectId: new ObjectId(projectId),
       docId: new ObjectId(validatedData.docId),
-      type: validatedData.type,
+      type: validatedData.type as State.TaskType,
       status: 'pending',
-      relatedDocs: validatedData.relatedDocs.map(id => new ObjectId(id)),
-      relatedSummaries: validatedData.relatedSummaries.map(id => new ObjectId(id)),
+      relatedDocs: validatedData.relatedDocs.map(doc => ({ id: new ObjectId(doc.id), type: doc.type as State.TaskType })),
       prompt: validatedData.prompt || '',
-      context: '',
       result: '',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -104,7 +104,7 @@ export async function GET(
     const projectId = (await params).projectId;
     const { searchParams } = new URL(request.url);
     const docId = searchParams.get('docId');
-    
+    const taskType = searchParams.get('taskType');
     const tasks = await db.tasks();
     const query: any = {
       projectId: new ObjectId(projectId)
@@ -112,6 +112,10 @@ export async function GET(
     
     if (docId) {
       query.docId = new ObjectId(docId);
+    }
+
+    if (taskType) {
+      query.type = taskType as State.TaskType;
     }
     
     const taskList = await tasks

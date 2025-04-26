@@ -10,7 +10,7 @@ export namespace State {
     updatedAt?: Date;
   };
 
-  export type DocType = 'article' | 'character' | 'organization' | 'background' | 'event' | 'item' | 'location' | 'ability' | 'spell' | 'other';
+  export type DocType = 'article' | 'character' | 'organization' | 'background' | 'event' | 'item' | 'location' | 'ability' | 'spell' | 'other' | 'group';
 
   export type Doc = {
     _id?: string;
@@ -20,6 +20,11 @@ export namespace State {
     tasks?: Task[];
     content?: string;
     summary?: string;
+    synopsis?: string;
+    outline?: string;
+    improvement?: string;
+    other?: string;
+    notes?: string;
     projectId?: string;
     parentDocId?: string;
     priority?: number;
@@ -29,13 +34,17 @@ export namespace State {
 
   export type TaskConfig = {
     _id?: string;
-    relatedDocs?: string[];
-    relatedSummaries?: string[];
+    relatedDocs?: {
+      id: string;
+      type: TaskType;
+    }[];
   }
+
+  export type TaskType = 'content' | 'summary' | 'improvement' | 'synopsis' | 'outline' | 'notes' | 'other';
 
   export type Task = TaskConfig & {
     _id?: string;
-    type?: string;
+    type?: TaskType;
     status?: string;
     prompt?: string;
     result?: string;

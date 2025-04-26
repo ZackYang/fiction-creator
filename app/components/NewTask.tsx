@@ -8,9 +8,10 @@ interface NewTaskProps {
   docId?: string;
   taskConfig: State.TaskConfig;
   onTaskCreated?: () => void;
+  taskType?: State.TaskType;
 }
 
-export default function NewTask({ projectId, docId, taskConfig, onTaskCreated }: NewTaskProps) {
+export default function NewTask({ projectId, docId, taskConfig, onTaskCreated, taskType }: NewTaskProps) {
   const [isCreating, setIsCreating] = useState(false);
 
   const handleCreateTask = async () => {
@@ -28,9 +29,8 @@ export default function NewTask({ projectId, docId, taskConfig, onTaskCreated }:
         },
         body: JSON.stringify({
           docId,
-          type: 'content', // 默认创建内容生成任务
+          type: taskType || 'content', // 默认创建内容生成任务
           relatedDocs: taskConfig.relatedDocs || [],
-          relatedSummaries: taskConfig.relatedSummaries || [],
         }),
       });
 

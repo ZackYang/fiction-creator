@@ -10,6 +10,7 @@ interface TaskDialogProps {
   projectId: string;
   docId: string;
   task?: State.Task;
+  currentDoc?: State.Doc;
   isOpen: boolean;
   onClose: () => void;
   onTaskUpdated?: (task: State.Task) => void;
@@ -17,14 +18,15 @@ interface TaskDialogProps {
 
 export default function TaskDialog({ 
   task,
+  currentDoc,
   isOpen, 
   onClose, 
   onTaskUpdated,
 }: TaskDialogProps) {
   if (!task) return null;
 
-  const [selectedDocs, setSelectedDocs] = useState<string[]>(
-    task.relatedDocs?.map(id => id.toString()) || []
+  const [selectedDocs, setSelectedDocs] = useState<{ id: string; type: State.TaskType }[]>(
+    task.relatedDocs || []
   );
   const [selectedSummaries, setSelectedSummaries] = useState<string[]>(
     task.relatedSummaries?.map(id => id.toString()) || []
@@ -32,7 +34,6 @@ export default function TaskDialog({
   const [selectedType, setSelectedType] = useState<State.Task['type']>(task.type);
   const [prompt, setPrompt] = useState(task.prompt || '');
   const [isExecuting, setIsExecuting] = useState(false);
-  const [currentDoc, setCurrentDoc] = useState<State.Doc | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -44,27 +45,31 @@ export default function TaskDialog({
   const getTaskTitle = () => {
     if (!currentDoc) return '编辑任务';
     
-    const typeText = selectedType === 'content' ? '生成' : 
+    const typeText = selectedType === 'content' ? '内容' : 
                     selectedType === 'summary' ? '摘要' : 
                     selectedType === 'outline' ? '大纲' :
-                    selectedType === 'improve' ? '优化' :
-                    '生成';
+                    selectedType === 'improvement' ? '优化' :
+                    selectedType === 'synopsis' ? '梗概' :
+                    selectedType === 'notes' ? '笔记' :
+                    selectedType === 'other' ? '其他' :
+                    '';
     
-    return `编辑 ${typeText} ${currentDoc.title}`;
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-gray-500">生成</span>
+        <span className="text-gray-700">{currentDoc.title}</span>
+        <span className="text-gray-500">{typeText}</span>
+      </div>
+    );
   };
 
   const handleDragEnd = (result: any) => {
     if (!result.destination) return;
 
-    const isSummary = result.destination.droppableId === 'summary-list';
-    const items = isSummary ? selectedSummaries : selectedDocs;
-    const setItems = isSummary ? setSelectedSummaries : setSelectedDocs;
-
-    const reorderedItems = Array.from(items);
+    const reorderedItems = Array.from(selectedDocs);
     const [removed] = reorderedItems.splice(result.source.index, 1);
     reorderedItems.splice(result.destination.index, 0, removed);
-
-    setItems(reorderedItems);
+    setSelectedDocs(reorderedItems);
   };
 
   const handleUpdate = async () => {
@@ -133,36 +138,26 @@ export default function TaskDialog({
                 <option value="content">生成内容</option>
                 <option value="summary">生成摘要</option>
                 <option value="outline">生成大纲</option>
-                <option value="improve">优化内容</option>
+                <option value="improvement">优化内容</option>
+                <option value="synopsis">生成梗概</option>
+                <option value="notes">生成笔记</option>
+                <option value="other">其他</option>
               </select>
             </div>
             <div className="w-full h-full flex">
               <div className="w-full flex h-full gap-4">
-                <div className="w-2/5 flex flex-col h-full">
+                <div className="w-3/5 flex flex-col h-full">
                   {
                     task && (
                       <DocSelector
                         projectId={task?.projectId || ''}
-                        selectedDocIds={selectedDocs}
+                        selectedDocsIdsWithType={selectedDocs}
                         onDocsChange={setSelectedDocs}
                       />
                     )
                   }
                 </div>
-
                 <div className="w-2/5 flex flex-col h-full">
-                  {
-                    task && (
-                      <DocSelector
-                        projectId={task?.projectId || ''}
-                        selectedDocIds={selectedSummaries}
-                        onDocsChange={setSelectedSummaries}
-                      />
-                    )
-                  }
-                </div>
-
-                <div className="w-1/5 flex flex-col h-full">
                   <label className="block text-sm font-medium mb-2">Prompt</label>
                   <div className="flex-1 flex flex-col">
                     <textarea

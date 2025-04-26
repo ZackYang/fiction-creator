@@ -5,11 +5,13 @@ import { Type } from '@/lib/types';
 
 export async function GET(
   request: Request,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
     const projects = await db.projects();
-    const project = await projects.findOne({ _id: new ObjectId(params.projectId) });
+    const projectId = (await params).projectId;
+
+    const project = await projects.findOne({ _id: new ObjectId(projectId) });
 
     if (!project) {
       return NextResponse.json(
@@ -68,7 +70,7 @@ export async function PATCH(
 
     // 解析请求体
     const body = await request.json();
-    const { name, taskConfigs } = body;
+    const { name, taskConfig } = body;
 
     // 验证必填字段
     if (!name) {
@@ -88,8 +90,8 @@ export async function PATCH(
     };
 
     // 如果提供了 taskConfigs，则更新
-    if (taskConfigs) {
-      updateData.taskConfigs = taskConfigs;
+    if (taskConfig) {
+      updateData.taskConfig = taskConfig;
     }
 
     // 执行更新

@@ -7,13 +7,15 @@ import { Type } from '@/lib/types';
 // 文档更新验证模式
 const updateDocSchema = z.object({
   title: z.string().min(1).optional(),
-  type: z.enum(['character', 'organization', 'background', 'event', 'item', 'location', 'ability', 'spell', 'article', 'other']).optional(),
+  type: z.enum(['character', 'organization', 'background', 'event', 'item', 'location', 'ability', 'spell', 'article', 'other', 'group']).optional(),
   content: z.string().optional(),
   summary: z.string().optional(),
   priority: z.number().optional(),
   taskConfig: z.object({
-    relatedDocs: z.array(z.string()).transform(arr => arr.map(id => new ObjectId(id))).optional(),
-    relatedSummaries: z.array(z.string()).transform(arr => arr.map(id => new ObjectId(id))).optional(),
+    relatedDocs: z.array(z.object({
+      id: z.string().transform(id => new ObjectId(id)),
+      type: z.enum(['content', 'summary', 'improvement', 'synopsis', 'outline', 'notes', 'other'] as const)
+    })).optional(),
   }).optional(),
 });
 
@@ -85,6 +87,14 @@ export async function PUT(
         $set: {
           updatedAt: new Date(),
           ...validatedData,
+          ...(validatedData.taskConfig?.relatedDocs && {
+            taskConfig: {
+              relatedDocs: validatedData.taskConfig.relatedDocs.map(doc => ({
+                ...doc,
+                id: new ObjectId(doc.id)
+              }))
+            }
+          })
         },
       }
     );

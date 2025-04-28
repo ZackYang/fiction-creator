@@ -5,9 +5,11 @@ import { z } from 'zod';
 
 // 任务更新验证模式
 const updateTaskSchema = z.object({
-  type: z.enum(['content', 'summary', 'outline', 'improve']).optional(),
-  relatedDocs: z.array(z.string()).transform(arr => arr.map(id => new ObjectId(id))).optional(),
-  relatedSummaries: z.array(z.string()).transform(arr => arr.map(id => new ObjectId(id))).optional(),
+  type: z.enum(['content', 'summary', 'outline', 'notes', 'other', 'synopsis', 'improvement']).optional(),
+  relatedDocs: z.array(z.object({
+    id: z.string().transform(id => new ObjectId(id)),
+    type: z.enum(['content', 'summary', 'improvement', 'synopsis', 'outline', 'notes', 'other'] as const)
+  })).optional(),
   prompt: z.string().optional(),
 });
 
@@ -66,8 +68,10 @@ export async function PUT(
       _id: updatedTask._id.toString(),
       projectId: updatedTask.projectId?.toString() || '',
       docId: updatedTask.docId?.toString(),
-      relatedDocs: updatedTask.relatedDocs?.map(id => id.toString()) || [],
-      relatedSummaries: updatedTask.relatedSummaries?.map(id => id.toString()) || [],
+      relatedDocs: updatedTask.relatedDocs?.map(doc => ({
+        id: doc.id.toString(),
+        type: doc.type
+      })) || []
     };
 
     return NextResponse.json(

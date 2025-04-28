@@ -20,6 +20,11 @@ export namespace Type {
     tasks: Task[];
     content: string;
     summary: string;
+    outline: string;
+    improvement: string;
+    notes: string;
+    other: string;
+    synopsis: string;
     projectId: ObjectId;
     parentDocId?: ObjectId;
     priority: number;

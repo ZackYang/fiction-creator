@@ -1,6 +1,6 @@
-import { generateUserMessages, generateUserPrompt, systemPrompt } from './promptGenerator';
+import { generateUserMessages, systemPrompt } from './promptGenerator';
 import { Type } from './types';
-
+import fs from 'fs';
 interface DeepSeekResponse {
   id: string;
   object: string;
@@ -46,7 +46,8 @@ interface StreamResponse {
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1';
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-reasoner';
+const MAX_TOKENS = process.env.MAX_TOKENS || 8000;
 
 export class DeepSeekClient {
   private apiKey: string;
@@ -132,27 +133,36 @@ export class DeepSeekClient {
   ): Promise<string> {
     const {
       model = DEEPSEEK_MODEL,
-      max_tokens = 8000,
-      temperature = 1.4,
-      top_p = 1,
+      max_tokens = MAX_TOKENS,
+      temperature = 1.2,
+      top_p = 0.95,
       frequency_penalty = 0,
       presence_penalty = 0,
       stream = true,
     } = options;
-
-    console.log('Generating completion for task:', {
-      taskId: task._id,
-      type: task.type,
-      docId: task.docId
-    });
     
     const userMessages = await generateUserMessages(task);
-    const prompt = await generateUserPrompt(task);
+    // save userMessages to file
+    fs.writeFileSync('userMessages.json', JSON.stringify(userMessages, null, 2));
 
-    console.log('Generated messages:', {
-      userMessagesLength: userMessages.length,
-      promptLength: prompt.length
-    });
+    const requestBody = {
+      model,
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt(),
+        },
+        ...userMessages
+      ],
+      max_tokens: parseInt(max_tokens.toString()),
+      temperature: parseFloat(temperature.toString()),
+      top_p: parseFloat(top_p.toString()),
+      frequency_penalty: parseFloat(frequency_penalty.toString()),
+      presence_penalty: parseFloat(presence_penalty.toString()),
+      stream,
+    };
+
+    console.log('Request body:', JSON.stringify(requestBody, null, 2));
 
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -161,33 +171,17 @@ export class DeepSeekClient {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.apiKey}`,
         },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: 'system',
-              content: systemPrompt(),
-            },
-            {
-              role: 'user',
-              content: userMessages + '\n\n' + prompt,
-            }
-          ],
-          max_tokens,
-          temperature,
-          top_p,
-          frequency_penalty,
-          presence_penalty,
-          stream,
-        }),
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('DeepSeek API error response:', errorText);
         let errorMessage = 'Unknown error occurred';
         try {
           const error: DeepSeekError = JSON.parse(errorText);
           errorMessage = error.error?.message || 'Unknown error occurred';
+          console.error('DeepSeek API error details:', error);
         } catch (e) {
           errorMessage = `HTTP error: ${response.status} ${response.statusText}`;
         }

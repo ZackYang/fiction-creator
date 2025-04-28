@@ -10,6 +10,11 @@ const updateDocSchema = z.object({
   type: z.enum(['character', 'organization', 'background', 'event', 'item', 'location', 'ability', 'spell', 'article', 'other', 'group']).optional(),
   content: z.string().optional(),
   summary: z.string().optional(),
+  improvement: z.string().optional(),
+  synopsis: z.string().optional(),
+  outline: z.string().optional(),
+  notes: z.string().optional(),
+  other: z.string().optional(),
   priority: z.number().optional(),
   taskConfig: z.object({
     relatedDocs: z.array(z.object({

@@ -166,14 +166,37 @@ export default function TaskList({ projectId, docId, refreshKey, taskType }: Tas
 
   const handleApplyTask = async (task: State.Task) => {
     try {
+      // 根据任务类型确定要更新的字段
+      const updateData: any = {};
+      switch (task.type) {
+        case 'summary':
+          updateData.summary = task.result;
+          break;
+        case 'synopsis':
+          updateData.synopsis = task.result;
+          break;
+        case 'outline':
+          updateData.outline = task.result;
+          break;
+        case 'improvement':
+          updateData.improvement = task.result;
+          break;
+        case 'notes':
+          updateData.notes = task.result;
+          break;
+        case 'other':
+          updateData.other = task.result;
+          break;
+        default:
+          updateData.content = task.result;
+      }
+
       const response = await fetch(`/api/projects/${projectId}/docs/${docId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          [task.type === 'summary' ? 'summary' : 'content']: task.result,
-        }),
+        body: JSON.stringify(updateData),
       });
 
       if (!response.ok) {
@@ -305,15 +328,13 @@ export default function TaskList({ projectId, docId, refreshKey, taskType }: Tas
                   <Check className="w-4 h-4" />
                 </button>
               )}
-              {(task.status === 'pending' || task.status === 'completed') && (
-                <button
+              <button
                   onClick={() => handleExecuteTask(task._id?.toString() || '')}
                   className="p-1 text-blue-500 hover:text-blue-700"
-                  title={task.status === 'completed' ? '重新执行' : '执行任务'}
+                  title={task.status === 'pending' ? '执行任务' : '重新执行'}
                 >
                   <Play className="w-4 h-4" />
-                </button>
-              )}
+              </button>
               <button
                 onClick={() => handleEditTask(task)}
                 className="p-1 text-gray-500 hover:text-gray-700"
@@ -351,7 +372,7 @@ export default function TaskList({ projectId, docId, refreshKey, taskType }: Tas
             {task.type === 'other' && '其他'}
             {task.type === 'synopsis' && '生成梗概'}
           </div>
-          {task.result && task.result.startsWith('Error:') && (
+          {task.result && typeof task.result === 'string' && task.result.startsWith('Error:') && (
             <div className="text-sm text-red-500 mb-2">
               {task.result}
             </div>
@@ -411,6 +432,7 @@ export default function TaskList({ projectId, docId, refreshKey, taskType }: Tas
           onTaskUpdated={(task: State.Task) => {
             setIsTaskDialogOpen(false);
             setSelectedTask(task);
+            fetchTasks();
           }}
         />
       )}

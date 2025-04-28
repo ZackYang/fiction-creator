@@ -386,7 +386,10 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
               </div>
 
               <TaskList projectId={projectId} docId={docId} refreshKey={refreshKey} taskType={activeTab as State.TaskType} />
-              
+              {/* 字数统计 */}
+              <div className="text-sm text-gray-500">
+                <p>字数统计: 中文 {getWordCount(tabs.find(tab => tab.id === activeTab)?.value || '').chinese} | 英文 {getWordCount(tabs.find(tab => tab.id === activeTab)?.value || '').english} | 总计 {getWordCount(tabs.find(tab => tab.id === activeTab)?.value || '').total}</p>
+              </div>
               <div className="border border-gray-300 rounded overflow-hidden">
                 <MDEditor
                   value={tabs.find(tab => tab.id === activeTab)?.value || ''}

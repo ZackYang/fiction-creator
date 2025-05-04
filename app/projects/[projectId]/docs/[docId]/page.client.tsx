@@ -119,6 +119,11 @@ export default function DocEditor({ projectId, docId }: { projectId: string; doc
           content,
           summary,
           priority,
+          synopsis: doc.synopsis,
+          outline: doc.outline,
+          improvement: doc.improvement,
+          notes: doc.notes,
+          other: doc.other,
           taskConfig,
         }),
       });

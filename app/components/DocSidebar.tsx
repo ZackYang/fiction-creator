@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, ChevronRight, ChevronDown, User, Users, BookOpen, Calendar, Package, MapPin, Zap, Wand2, FileText, Newspaper, AlertCircle, FileWarning } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Type } from '@/lib/types';
+import { DOC_TYPE_LIST, Type } from '@/lib/types';
 
 export const getDocTypeColor = (type: Type.DocType) => {
   switch (type) {
@@ -81,6 +81,7 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
 
   const fetchDocs = async () => {
     try {
@@ -169,6 +170,72 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
     });
   };
 
+  const updateDocParent = async (docId: string, newParentId: string | null) => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/docs/${docId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          parentDocId: newParentId
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update doc');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to update doc');
+      }
+
+      await fetchDocs();
+      toast.success('Document updated successfully');
+    } catch (error) {
+      console.error('Error updating doc:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update document');
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, docId: string) => {
+    setDraggedDocId(docId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetDocId: string) => {
+    e.preventDefault();
+    if (!draggedDocId || draggedDocId === targetDocId) return;
+
+    // Prevent circular reference
+    const isCircular = (parentId: string | null): boolean => {
+      if (!parentId) return false;
+      if (parentId === draggedDocId) return true;
+      const parentDoc = docs.find(d => d._id.toString() === parentId);
+      return parentDoc ? isCircular(parentDoc.parentDocId?.toString() || null) : false;
+    };
+
+    const targetDoc = docs.find(d => d._id.toString() === targetDocId);
+    if (targetDoc && isCircular(targetDocId)) {
+      toast.error('Cannot create circular reference');
+      return;
+    }
+
+    await updateDocParent(draggedDocId, targetDocId);
+    setDraggedDocId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedDocId(null);
+  };
+
   const renderDocItem = (doc: Type.Doc, level = 0) => {
     const hasChildren = docs.some(d => d.parentDocId?.toString() === doc._id.toString());
     const isExpanded = expandedDocs.has(doc._id.toString());
@@ -177,15 +244,21 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
     const typeIcon = getDocTypeIcon(doc.type);
     const missingContent = !doc.content || doc.content.trim() === '';
     const missingSummary = !doc.summary || doc.summary.trim() === '';
+    const isDragging = draggedDocId === doc._id.toString();
 
     return (
       <div key={doc._id.toString()}>
         <div
+          draggable
+          onDragStart={(e) => handleDragStart(e, doc._id.toString())}
+          onDragOver={handleDragOver}
+          onDrop={(e) => handleDrop(e, doc._id.toString())}
+          onDragEnd={handleDragEnd}
           className={`flex items-center justify-between gap-2 px-4 py-2 cursor-pointer group ${
             isSelected 
               ? 'bg-blue-100 text-blue-700 font-medium border-l-4 border-blue-500' 
               : `${typeColor}`
-          }`}
+          } ${isDragging ? 'opacity-50' : ''}`}
           style={{ paddingLeft: `${level * 16 + 16}px` }}
           onClick={() => {
             if (onDocSelect) {
@@ -355,17 +428,9 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
                   onChange={(e) => setNewDocType(e.target.value as Type.DocType)}
                   className="w-full px-3 py-2 border border-gray-300 rounded"
                 >
-                  <option value="article">Article</option>
-                  <option value="group">Group</option>
-                  <option value="character">Character</option>
-                  <option value="organization">Organization</option>
-                  <option value="background">Background</option>
-                  <option value="event">Event</option>
-                  <option value="item">Item</option>
-                  <option value="location">Location</option>
-                  <option value="ability">Ability</option>
-                  <option value="spell">Spell</option>
-                  <option value="other">Other</option>
+                  {DOC_TYPE_LIST.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
                 </select>
               </div>
             </div>

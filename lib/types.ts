@@ -1,5 +1,29 @@
 import type { ObjectId, WithId } from "mongodb";
 
+export const DOC_TYPE_LIST = [
+  'article',
+  'character',
+  'organization',
+  'background',
+  'event',
+  'item',
+  'location',
+  'ability',
+  'spell',
+  'other',
+  'group',
+]
+
+export const TASK_TYPE_LIST = [
+  'content',
+  'summary',
+  'improvement',
+  'synopsis',
+  'outline',
+  'notes',
+  'other',
+]
+
 export namespace Type {
   export type Project = WithId<{
     name: string;

@@ -2,7 +2,9 @@ import { Type } from './types';
 import { db } from './db/mongo';
 import { State } from './states';
 export function systemPrompt(): string {
-  return `你是一个专业的写作助手，请根据以下要求完成任务：\n\n`;
+  return `你是一个专业的写作助手，请根据以下要求完成任务：\n
+你需要认真学习我的写作风格，并根据我的写作风格完成任务。所有的小说文本需要有细腻的文笔，以及丰富的情感描写。
+  \n`;
 }
 
 export function getDocTypeText(type: State.TaskType): string {
@@ -90,7 +92,7 @@ export async function generateUserMessages(task: Type.Task): Promise<{ role: str
   }
 
   if (task.type === 'improvement') {
-    const content = `以下是当前文档 ${currentDoc?.title} 的内容：\n\n${currentDoc?.content}\n\n${task.prompt || '请根据以上内容打分（100分制），并生成一个优化建议'}`
+    const content = `以下是当前文档 ${currentDoc?.title} 的内容：\n\n${currentDoc?.content}\n\n${task.prompt || '请根据以上内容打分（100分制），并生成一个优化建议。同时对比其他的知名同类作品，分析自己的作品在同类作品中的优缺点。'}`
 
     userMessages.push({
       role: 'user',

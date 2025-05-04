@@ -16,6 +16,7 @@ const updateDocSchema = z.object({
   notes: z.string().optional(),
   other: z.string().optional(),
   priority: z.number().optional(),
+  parentDocId: z.string().nullable().optional(),
   taskConfig: z.object({
     relatedDocs: z.array(z.object({
       id: z.string().transform(id => new ObjectId(id)),
@@ -83,6 +84,47 @@ export async function PUT(
     const validatedData = updateDocSchema.parse(body);
     
     const docs = await db.docs();
+
+    // 如果更新父级关系，检查是否存在循环引用
+    if (validatedData.parentDocId !== undefined) {
+      const isCircular = async (currentId: string, targetId: string | null): Promise<boolean> => {
+        if (!targetId) return false;
+        if (currentId === targetId) return true;
+        const doc = await docs.findOne({ _id: new ObjectId(targetId) });
+        if (!doc?.parentDocId) return false;
+        return isCircular(currentId, doc.parentDocId.toString());
+      };
+
+      if (await isCircular(docId, validatedData.parentDocId)) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: '不能创建循环引用' 
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    const updateData: Partial<Type.Doc> = {};
+    if (validatedData.title) updateData.title = validatedData.title;
+    if (validatedData.type) updateData.type = validatedData.type;
+    if (validatedData.content !== undefined) updateData.content = validatedData.content;
+    if (validatedData.summary !== undefined) updateData.summary = validatedData.summary;
+    if (validatedData.priority !== undefined) updateData.priority = validatedData.priority;
+    if (validatedData.parentDocId !== undefined) {
+      updateData.parentDocId = validatedData.parentDocId ? new ObjectId(validatedData.parentDocId) : undefined;
+    }
+    if (validatedData.synopsis !== undefined) updateData.synopsis = validatedData.synopsis;
+    if (validatedData.outline !== undefined) updateData.outline = validatedData.outline;
+    if (validatedData.improvement !== undefined) updateData.improvement = validatedData.improvement;
+    if (validatedData.notes !== undefined) updateData.notes = validatedData.notes;
+    if (validatedData.other !== undefined) updateData.other = validatedData.other;
+
+    if (validatedData.taskConfig) {
+      updateData.taskConfig = validatedData.taskConfig;
+    }
+
     const result = await docs.updateOne(
       {
         _id: new ObjectId(docId),
@@ -90,16 +132,8 @@ export async function PUT(
       },
       {
         $set: {
+          ...updateData,
           updatedAt: new Date(),
-          ...validatedData,
-          ...(validatedData.taskConfig?.relatedDocs && {
-            taskConfig: {
-              relatedDocs: validatedData.taskConfig.relatedDocs.map(doc => ({
-                ...doc,
-                id: new ObjectId(doc.id)
-              }))
-            }
-          })
         },
       }
     );
@@ -137,26 +171,6 @@ export async function PUT(
       projectId: updatedDoc.projectId?.toString() || '',
       parentDocId: updatedDoc.parentDocId?.toString(),
     };
-
-    const updateData: Partial<Type.Doc> = {};
-    if (validatedData.title) updateData.title = validatedData.title;
-    if (validatedData.type) updateData.type = validatedData.type;
-    if (validatedData.content !== undefined) updateData.content = validatedData.content;
-    if (validatedData.summary !== undefined) updateData.summary = validatedData.summary;
-    if (validatedData.priority !== undefined) updateData.priority = validatedData.priority;
-
-    await docs.updateOne(
-      {
-        _id: new ObjectId(docId),
-        projectId: new ObjectId(projectId),
-      },
-      {
-        $set: {
-          ...updateData,
-          updatedAt: new Date(),
-        },
-      }
-    );
 
     return NextResponse.json(
       { 

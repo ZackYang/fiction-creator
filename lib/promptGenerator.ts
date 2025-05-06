@@ -92,7 +92,13 @@ export async function generateUserMessages(task: Type.Task): Promise<{ role: str
   }
 
   if (task.type === 'improvement') {
-    const content = `以下是当前文档 ${currentDoc?.title} 的内容：\n\n${currentDoc?.content}\n\n${task.prompt || '请根据以上内容打分（100分制），并生成一个优化建议。同时对比其他的知名同类作品，分析自己的作品在同类作品中的优缺点。'}`
+    const content = `
+以下是当前文档 ${currentDoc?.title} 的内容：
+
+${currentDoc?.content}
+
+${task.prompt || '请根据以上内容打分从不同维度给${currentDoc?.title}打分, 给出总分（100分制）并生成一个优化建议。同时对比其他的知名同类作品的多维度分数(100分制)，分析自己的作品在同类作品中的优缺点。'}
+`
 
     userMessages.push({
       role: 'user',
@@ -103,7 +109,7 @@ export async function generateUserMessages(task: Type.Task): Promise<{ role: str
   if (task.type === 'summary') {    
     userMessages.push({
       role: 'user',
-      content: `请为以下文档 ${currentDoc?.title} 生成一个详细的摘要，该摘要将用于生成后续的文档的提示：\n\n${currentDoc?.content}\n\n`
+      content: `请为以下文档 ${currentDoc?.title} 生成一个详细的摘要，包括每章的主要故事情节，出现的人物简介，该摘要将用于生成后续的文档的提示, 请不要有任何的后续猜想、建议或者评论：\n\n${currentDoc?.content}\n\n`
     })
   }
 

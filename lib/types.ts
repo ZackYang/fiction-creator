@@ -25,10 +25,20 @@ export const TASK_TYPE_LIST = [
 ]
 
 export namespace Type {
+  export type AI_API = {
+    name: string;
+    apiKey: string;
+    baseURL: string;
+    model: string;
+    maxTokens: number;
+    temperature: number;
+  }
+
   export type Project = WithId<{
     name: string;
     tasks: Task[];
-    taskConfig: TaskConfig;
+    taskConfig?: TaskConfig;
+    aiApi: AI_API;
     createdAt: Date;
     updatedAt: Date;
     author: string;
@@ -49,9 +59,15 @@ export namespace Type {
     notes: string;
     other: string;
     synopsis: string;
+    history: {
+      type: DocType;
+      content: string;
+      createdAt: Date;
+    }[];
     projectId: ObjectId;
     parentDocId?: ObjectId;
     priority: number;
+    achived: boolean;
     createdAt: Date;
     updatedAt: Date;
   }

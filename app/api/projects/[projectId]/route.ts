@@ -2,6 +2,16 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/mongo';
 import { ObjectId } from 'mongodb';
 import { Type } from '@/lib/types';
+import { z } from 'zod';
+import { AI_APIS } from '@/lib/ai-apis';
+
+// 项目更新验证模式
+const updateProjectSchema = z.object({
+  aiApi: z.string().refine(
+    (api) => AI_APIS.some(a => a.name === api),
+    { message: 'Invalid AI API' }
+  ),
+});
 
 export async function GET(
   request: Request,
@@ -50,11 +60,11 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
     const projects = await db.projects();
-    const projectId = new ObjectId(params.projectId);
+    const projectId = new ObjectId((await params).projectId);
 
     // 检查项目是否存在
     const existingProject = await projects.findOne({ _id: projectId });
@@ -134,6 +144,81 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (error) {
+    console.error('Failed to update project:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        message: '更新项目失败' 
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: { projectId: string } }
+) {
+  try {
+    const { projectId } = params;
+    const body = await request.json();
+    const validatedData = updateProjectSchema.parse(body);
+    
+    const projects = await db.projects();
+    const selectedApi = AI_APIS.find(a => a.name === validatedData.aiApi);
+    if (!selectedApi) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'AI API 不存在' 
+        },
+        { status: 400 }
+      );
+    }
+
+    const result = await projects.updateOne(
+      { _id: new ObjectId(projectId) },
+      {
+        $set: {
+          aiApi: {
+            ...selectedApi,
+            maxTokens: selectedApi.maxTokens || 8000,
+            temperature: selectedApi.temperature || 1.2
+          },
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: '项目不存在' 
+        },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { 
+        success: true,
+        message: 'AI API 更新成功'
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: '数据验证失败',
+          errors: error.errors 
+        },
+        { status: 400 }
+      );
+    }
+    
     console.error('Failed to update project:', error);
     return NextResponse.json(
       { 

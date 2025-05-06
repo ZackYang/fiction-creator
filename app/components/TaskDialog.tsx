@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { State } from '@/lib/states';
+import { TASK_TYPE_LIST } from '@/lib/types';
 import toast from 'react-hot-toast';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import DocSelector from './DocSelector';
+import { ZH_CN } from '@/lib/zh-cn';
 
 interface TaskDialogProps {
   projectId: string;
@@ -44,15 +46,11 @@ export default function TaskDialog({
 
   const getTaskTitle = () => {
     if (!currentDoc) return '编辑任务';
+    if (!selectedType) return '编辑任务';
     
-    const typeText = selectedType === 'content' ? '内容' : 
-                    selectedType === 'summary' ? '摘要' : 
-                    selectedType === 'outline' ? '大纲' :
-                    selectedType === 'improvement' ? '优化' :
-                    selectedType === 'synopsis' ? '梗概' :
-                    selectedType === 'notes' ? '笔记' :
-                    selectedType === 'other' ? '其他' :
-                    '';
+    const taskTypeMap: Record<State.TaskType, string> = ZH_CN.TASK_TYPE_LIST;
+    
+    const typeText = taskTypeMap[selectedType];
     
     return (
       <div className="flex items-center gap-2">
@@ -135,18 +133,14 @@ export default function TaskDialog({
                 onChange={(e) => setSelectedType(e.target.value as State.Task['type'])}
                 className="w-full p-2 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               >
-                <option value="content">生成内容</option>
-                <option value="summary">生成摘要</option>
-                <option value="outline">生成大纲</option>
-                <option value="improvement">优化内容</option>
-                <option value="synopsis">生成梗概</option>
-                <option value="notes">生成笔记</option>
-                <option value="other">其他</option>
+                {TASK_TYPE_LIST.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
               </select>
             </div>
             <div className="w-full h-full flex">
               <div className="w-full flex h-full gap-4">
-                <div className="w-3/5 flex flex-col h-full">
+                <div className="w-2/3 flex flex-col h-full">
                   {
                     task && (
                       <DocSelector
@@ -157,7 +151,7 @@ export default function TaskDialog({
                     )
                   }
                 </div>
-                <div className="w-2/5 flex flex-col h-full">
+                <div className="w-1/3 flex flex-col h-full">
                   <label className="block text-sm font-medium mb-2">Prompt</label>
                   <div className="flex-1 flex flex-col">
                     <textarea

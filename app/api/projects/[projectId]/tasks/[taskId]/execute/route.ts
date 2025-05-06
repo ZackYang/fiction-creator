@@ -16,13 +16,26 @@ export async function POST(
 
     const Task = await db.tasks();
 
+    const Project = await db.projects();
+
     // 检查任务是否存在
     const task = await Task.findOne({ _id: new ObjectId(taskId), projectId: new ObjectId(projectId) });
     if (!task) {
       return NextResponse.json({ success: false, message: 'Task not found' }, { status: 404 });
     }
 
+    const project = await Project.findOne({ _id: new ObjectId(projectId) });
+    if (!project) {
+      return NextResponse.json({ success: false, message: 'Project not found' }, { status: 404 });
+    }
+
+    const aiApi = project.aiApi;
     const DeepSeek = new DeepSeekClient();
+
+    // aiApi 不存在
+    if (!aiApi) {
+      return NextResponse.json({ success: false, message: 'AI API not found' }, { status: 404 });
+    }
 
     // 更新任务状态为生成中
     await Task.updateOne(
@@ -54,7 +67,7 @@ export async function POST(
       } catch (error) {
         console.error('Error writing chunk:', error);
       }
-    }).then(async (finalResult) => {
+    }, aiApi).then(async (finalResult) => {
       try {
         // 更新最终状态
         await Task.updateOne(

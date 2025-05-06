@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/mongo';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
-import { Type } from '@/lib/types';
+import { DOC_TYPE_LIST, Type } from '@/lib/types';
 
 // 文档更新验证模式
 const updateDocSchema = z.object({
@@ -85,7 +85,6 @@ export async function PUT(
     
     const docs = await db.docs();
 
-    // 如果更新父级关系，检查是否存在循环引用
     if (validatedData.parentDocId !== undefined) {
       const isCircular = async (currentId: string, targetId: string | null): Promise<boolean> => {
         if (!targetId) return false;
@@ -123,6 +122,22 @@ export async function PUT(
 
     if (validatedData.taskConfig) {
       updateData.taskConfig = validatedData.taskConfig;
+    }
+
+    const doc = await docs.findOne({
+      _id: new ObjectId(docId),
+      projectId: new ObjectId(projectId),
+    });
+
+    // 如果任何内容字段有变化，则记录历史
+    for (const type of DOC_TYPE_LIST) {
+      if ((validatedData as any)[type] !== undefined && (validatedData as any)[type] !== (doc as any)?.[type]) {
+        updateData.history = [...(doc?.history || []), {
+          type: type as Type.DocType,
+          content: (validatedData as any)[type] || '',
+          createdAt: new Date(),
+        }];
+      }
     }
 
     const result = await docs.updateOne(

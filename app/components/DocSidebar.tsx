@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Plus, ChevronRight, ChevronDown, User, Users, BookOpen, Calendar, Package, MapPin, Zap, Wand2, FileText, Newspaper, AlertCircle, FileWarning } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { DOC_TYPE_LIST, Type } from '@/lib/types';
+import { ZH_CN } from '@/lib/zh-cn';
+import { AI_APIS } from '@/lib/ai-apis';
 
 export const getDocTypeColor = (type: Type.DocType) => {
   switch (type) {
@@ -79,6 +81,7 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
   const [parentDocId, setParentDocId] = useState<string | null>(null);
   const [showSubDocDialog, setShowSubDocDialog] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [selectedAIAPI, setSelectedAIAPI] = useState(AI_APIS[0].name);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
@@ -329,7 +332,6 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsResizing(true);
     document.body.style.cursor = 'col-resize';
-    e.preventDefault(); // 防止文本选择
   };
 
   const handleMouseMove = (e: MouseEvent) => {
@@ -366,6 +368,36 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
     };
   }, [isResizing]);
 
+  const handleAIAPIChange = async (apiName: string) => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          aiApi: apiName
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update AI API');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to update AI API');
+      }
+
+      setSelectedAIAPI(apiName);
+      toast.success('AI API 更新成功');
+    } catch (error) {
+      console.error('Error updating AI API:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update AI API');
+    }
+  };
+
   if (loading) {
     return (
       <div className="w-64 bg-white border-r border-gray-200 p-4">
@@ -384,14 +416,24 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
       className="relative bg-white border-r border-gray-200 flex flex-col"
       style={{ width: '256px', minWidth: '200px', maxWidth: '600px' }}
     >
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
         <button
           onClick={() => setShowNewDocDialog(true)}
           className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           <Plus size={16} />
-          New Document
+          新文档
         </button>
+        {/* AI API 选择器 */}
+        <select
+          value={selectedAIAPI}
+          onChange={(e) => handleAIAPIChange(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded"
+        >
+          {AI_APIS.map((api) => (
+            <option key={api.name} value={api.name}>{api.name}</option>
+          ))}
+        </select>
       </div>
       <div className="overflow-y-auto flex-1">
         {docs
@@ -409,27 +451,27 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
       {showNewDocDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
           <div className="bg-white p-6 rounded-lg w-96">
-            <h2 className="text-xl font-semibold mb-4">Create New Document</h2>
+            <h2 className="text-xl font-semibold mb-4">创建新文档</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Title</label>
+                <label className="block text-sm font-medium mb-1">标题</label>
                 <input
                   type="text"
                   value={newDocTitle}
                   onChange={(e) => setNewDocTitle(e.target.value)}
-                  placeholder="Document title"
+                  placeholder="文档标题"
                   className="w-full px-3 py-2 border border-gray-300 rounded"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Type</label>
+                <label className="block text-sm font-medium mb-1">类型</label>
                 <select
                   value={newDocType}
                   onChange={(e) => setNewDocType(e.target.value as Type.DocType)}
                   className="w-full px-3 py-2 border border-gray-300 rounded"
                 >
                   {DOC_TYPE_LIST.map((type) => (
-                    <option key={type} value={type}>{type}</option>
+                    <option key={type} value={type}>{ZH_CN.DOC_TYPE_LIST[type as Type.DocType]}</option>
                   ))}
                 </select>
               </div>
@@ -488,15 +530,9 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
                   onChange={(e) => setNewDocType(e.target.value as Type.DocType)}
                   className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="character">Character</option>
-                  <option value="organization">Organization</option>
-                  <option value="background">Background</option>
-                  <option value="event">Event</option>
-                  <option value="item">Item</option>
-                  <option value="location">Location</option>
-                  <option value="ability">Ability</option>
-                  <option value="spell">Spell</option>
-                  <option value="other">Other</option>
+                  {DOC_TYPE_LIST.map((type) => (
+                    <option key={type} value={type}>{ZH_CN.DOC_TYPE_LIST[type as Type.DocType]}</option>
+                  ))}
                 </select>
               </div>
             </div>

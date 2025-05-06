@@ -1,10 +1,20 @@
 // This file is used to define the json interfaces for the models
 
 export namespace State {
+  export type AI_API = {
+    name: string;
+    apiKey: string;
+    baseURL: string;
+    model: string;
+    maxTokens: number;
+    temperature: number;
+  }
+
   export type Project = {
     _id?: string;
     name?: string;
-    taskConfig: TaskConfig;
+    taskConfig?: TaskConfig;
+    aiApi?: AI_API;
     tasks?: Task[];
     createdAt?: Date;
     updatedAt?: Date;

@@ -2,14 +2,19 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/mongo';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
-import { Type } from '@/lib/types';
+import { DOC_TYPE_LIST } from '@/lib/types';
 
 // 文档创建验证模式
 const createDocSchema = z.object({
   title: z.string().min(1, '文档标题不能为空'),
-  type: z.enum(['character', 'organization', 'background', 'event', 'item', 'location', 'ability', 'spell', 'article', 'other']),
+  type: z.enum(DOC_TYPE_LIST as [string, ...string[]]),
   content: z.string().optional(),
   summary: z.string().optional(),
+  outline: z.string().optional(),
+  improvement: z.string().optional(),
+  notes: z.string().optional(),
+  other: z.string().optional(),
+  synopsis: z.string().optional(),
   parentDocId: z.string().optional(),
   priority: z.number().optional(),
 });
@@ -29,7 +34,7 @@ export async function GET(
     const projectId = (await params).projectId;
     const docs = await db.docs();
     const docList = await docs
-      .find({ projectId: new ObjectId(projectId) })
+      .find({ projectId: new ObjectId(projectId), achived: { $ne: true } })
       .sort({ priority: 1, updatedAt: -1 })
       .toArray();
 
@@ -97,6 +102,13 @@ export async function POST(
       type: validatedData.type,
       content: validatedData.content || '',
       summary: validatedData.summary || '',
+      outline: validatedData.outline || '',
+      improvement: validatedData.improvement || '',
+      notes: validatedData.notes || '',
+      other: validatedData.other || '',
+      synopsis: validatedData.synopsis || '',
+      history: [],
+      achived: false,
       priority: newPriority,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -245,9 +257,15 @@ export async function DELETE(
     }
 
     const docs = await db.docs();
-    const result = await docs.findOneAndDelete({
+    const result = await docs.findOneAndUpdate({
       _id: new ObjectId(docId),
       projectId: new ObjectId(projectId),
+    }, {
+      $set: {
+        achived: true,
+      }
+    }, {
+      returnDocument: 'after'
     });
 
     if (!result) {

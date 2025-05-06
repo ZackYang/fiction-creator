@@ -460,7 +460,7 @@ export default function DocSelector({ projectId, selectedDocsIdsWithType, onDocs
 
   return (
     <div className="flex h-full gap-4">
-      <div className="w-2/3 flex flex-col h-full">
+      <div className="w-1/2 flex flex-col h-full">
         <label className="block text-sm font-medium mb-2">相关文档</label>
         {isLoading ? (
           <div className="text-center py-4">加载文档中...</div>
@@ -473,7 +473,7 @@ export default function DocSelector({ projectId, selectedDocsIdsWithType, onDocs
         )}
       </div>
 
-      <div className="w-1/3 flex flex-col h-full">
+      <div className="w-1/2 flex flex-col h-full">
         <label className="block text-sm font-medium mb-2">已选文档</label>
         {selectedDocsWithType.length === 0 ? (
           <div className="text-center py-4 text-gray-500">请从左侧选择文档</div>

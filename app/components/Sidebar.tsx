@@ -14,6 +14,7 @@ export default function Sidebar() {
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     fetchProjects();
@@ -59,27 +60,52 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="w-64 h-full bg-gray-800 text-white flex flex-col">
+    <div className={`h-full bg-gray-800 text-white flex flex-col transition-all duration-300 ${isExpanded ? 'w-64' : 'w-16'}`}>
       <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-        <h2 className="text-xl font-bold">Projects</h2>
-        <button
-          onClick={() => setShowDialog(true)}
-          className="p-2 rounded-full hover:bg-gray-700 transition-colors"
-          title="Create new project"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            viewBox="0 0 20 20"
-            fill="currentColor"
+        {isExpanded && <h2 className="text-xl font-bold">Projects</h2>}
+        <div className="flex items-center">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-2 rounded-full hover:bg-gray-700 transition-colors"
+            title={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
           >
-            <path
-              fillRule="evenodd"
-              d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d={isExpanded 
+                  ? "M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                  : "M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                }
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+          {isExpanded && (
+            <button
+              onClick={() => setShowDialog(true)}
+              className="p-2 rounded-full hover:bg-gray-700 transition-colors ml-2"
+              title="Create new project"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
       <div className="flex-1 overflow-auto p-4">
         {loading ? (
@@ -94,9 +120,10 @@ export default function Sidebar() {
               <li key={project._id}>
                 <Link
                   href={`/projects/${project._id}`}
-                  className="block p-2 rounded hover:bg-gray-700 transition-colors"
+                  className="block p-2 rounded hover:bg-gray-700 transition-colors truncate"
+                  title={project.name}
                 >
-                  {project.name}
+                  {isExpanded ? project.name : project.name.charAt(0)}
                 </Link>
               </li>
             ))}

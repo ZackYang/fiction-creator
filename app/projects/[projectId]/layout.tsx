@@ -28,7 +28,7 @@ export default function ProjectLayout({
         onRefresh={handleRefresh}
         key={refreshKey}
       />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto w-3/4">
         {children}
       </main>
     </div>

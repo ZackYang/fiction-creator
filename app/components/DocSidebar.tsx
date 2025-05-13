@@ -413,10 +413,10 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
   return (
     <div 
       ref={sidebarRef}
-      className="relative bg-white border-r border-gray-200 flex flex-col"
+      className="relative bg-white border-r border-gray-200 flex flex-col w-1/4"
       style={{ width: '256px', minWidth: '200px', maxWidth: '600px' }}
     >
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between gap-2">
         <button
           onClick={() => setShowNewDocDialog(true)}
           className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"

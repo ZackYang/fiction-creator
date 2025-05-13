@@ -68,7 +68,7 @@ export class DeepSeekClient {
       messages: [
         {
           role: 'system',
-          content: systemPrompt(),
+          content: systemPrompt(task.type),
         },
         ...userMessages
       ],

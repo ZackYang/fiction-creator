@@ -82,6 +82,8 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
   const [showSubDocDialog, setShowSubDocDialog] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [selectedAIAPI, setSelectedAIAPI] = useState(AI_APIS[0].name);
+  const [editingDocId, setEditingDocId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
   const sidebarRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
@@ -239,6 +241,36 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
     setDraggedDocId(null);
   };
 
+  const handleTitleEdit = async (docId: string, newTitle: string) => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/docs/${docId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          title: newTitle
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update doc title');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to update doc title');
+      }
+
+      await fetchDocs();
+      toast.success('标题更新成功');
+    } catch (error) {
+      console.error('Error updating doc title:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update document title');
+    }
+  };
+
   const renderDocItem = (doc: Type.Doc, level = 0) => {
     const hasChildren = docs.some(d => d.parentDocId?.toString() === doc._id.toString());
     const isExpanded = expandedDocs.has(doc._id.toString());
@@ -248,6 +280,8 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
     const missingContent = !doc.content || doc.content.trim() === '';
     const missingSummary = !doc.summary || doc.summary.trim() === '';
     const isDragging = draggedDocId === doc._id.toString();
+    const isEditing = editingDocId === doc._id.toString();
+    const wordCount = doc.content ? doc.content.trim().length : 0;
 
     return (
       <div key={doc._id.toString()}>
@@ -264,16 +298,40 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
           } ${isDragging ? 'opacity-50' : ''}`}
           style={{ paddingLeft: `${level * 16 + 16}px` }}
           onClick={() => {
-            if (onDocSelect) {
-              onDocSelect(doc._id.toString());
-            } else {
-              router.push(`/projects/${projectId}/docs/${doc._id.toString()}`);
+            if (!isEditing) {
+              if (onDocSelect) {
+                onDocSelect(doc._id.toString());
+              } else {
+                router.push(`/projects/${projectId}/docs/${doc._id.toString()}`);
+              }
             }
           }}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1">
             {typeIcon}
-            <span className="flex-1 truncate">{doc.title}</span>
+            {isEditing ? (
+              <input
+                type="text"
+                value={editingTitle}
+                onChange={(e) => setEditingTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleTitleEdit(doc._id.toString(), editingTitle);
+                    setEditingDocId(null);
+                  } else if (e.key === 'Escape') {
+                    setEditingDocId(null);
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="flex-1 px-1 py-0.5 border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                autoFocus
+              />
+            ) : (
+              <div className="flex-1 truncate">
+                <span>{doc.title}</span>
+                <span className="text-gray-500 text-sm ml-1">({wordCount})</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-1">
             {missingContent && (
@@ -290,13 +348,26 @@ export default function DocSidebar({ projectId, onDocSelect, selectedDocId, onRe
                 aria-label="缺少摘要"
               />
             )}
+            {!isEditing && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingDocId(doc._id.toString());
+                  setEditingTitle(doc.title);
+                }}
+                className="p-1 hover:bg-gray-200 rounded opacity-0 group-hover:opacity-100"
+                title="编辑标题"
+              >
+                <FileText size={16} />
+              </button>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setParentDocId(doc._id.toString());
                 setShowSubDocDialog(true);
               }}
-              className="p-1 hover:bg-gray-200 rounded"
+              className="p-1 hover:bg-gray-200 rounded opacity-0 group-hover:opacity-100"
               title="创建子文档"
             >
               <Plus size={16} />

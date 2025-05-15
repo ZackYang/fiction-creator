@@ -25,7 +25,7 @@ export const AI_APIS: AI_API[] = [
     apiKey: 'sk-4c6729b0fa71489bb169e99ea490a0cc',
     baseURL: 'https://api.deepseek.com',
     model: 'deepseek-chat',
-    maxTokens: 2000,
+    maxTokens: 3000,
     temperature: 1.3,
   },
   {
@@ -33,7 +33,7 @@ export const AI_APIS: AI_API[] = [
     apiKey: 'sk-4c6729b0fa71489bb169e99ea490a0cc',
     baseURL: 'https://api.deepseek.com',
     model: 'deepseek-reasoner',
-    maxTokens: 2000,
+    maxTokens: 3000,
     temperature: 1.5,
   },
   {

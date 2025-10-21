@@ -7,7 +7,7 @@ import { DOC_TYPE_LIST } from '@/lib/types';
 // 文档创建验证模式
 const createDocSchema = z.object({
   title: z.string().min(1, '文档标题不能为空'),
-  type: z.enum(DOC_TYPE_LIST as [string, ...string[]]),
+  type: z.enum(['article', 'character', 'organization', 'background', 'event', 'item', 'location', 'ability', 'spell', 'other', 'group']),
   content: z.string().optional(),
   summary: z.string().optional(),
   outline: z.string().optional(),

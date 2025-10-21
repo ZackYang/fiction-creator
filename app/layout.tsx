@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import Sidebar from "./components/Sidebar";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Fiction Creator",
@@ -21,7 +18,7 @@ export default function RootLayout({
       <head>
         <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
       </head>
-      <body className={`${inter.className} h-full`}>
+      <body className="font-inter h-full">
         <div className="flex h-full">
           <Sidebar />
           <main className="flex-1 overflow-auto">

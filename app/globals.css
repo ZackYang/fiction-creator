@@ -9,6 +9,10 @@
   --font-sans: InterVariable, sans-serif;
 }
 
+.font-inter {
+  font-family: InterVariable, sans-serif;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

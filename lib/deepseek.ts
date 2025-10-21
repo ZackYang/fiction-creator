@@ -60,8 +60,8 @@ export class DeepSeekClient {
     } = aiApi;
     
     const userMessages = await generateUserMessages(task);
-    // save userMessages to file
-    fs.writeFileSync('userMessages.json', JSON.stringify(userMessages, null, 2));
+    // save userMessages to file (disabled for production)
+    // fs.writeFileSync('userMessages.json', JSON.stringify(userMessages, null, 2));
 
     const requestBody = {
       model,

@@ -387,7 +387,7 @@ export default function TaskList({ projectId, docId, refreshKey, taskType }: Tas
         <NewTask
           projectId={projectId}
           docId={docId}
-          taskConfig={doc?.taskConfig || project.taskConfig}
+          taskConfig={doc?.taskConfig || project.taskConfig || {}}
           onTaskCreated={() => fetchTasks()}
           taskType={taskType}
         />

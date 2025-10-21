@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/mongo';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
-import { DOC_TYPE_LIST, Type } from '@/lib/types';
+import { Type } from '@/lib/types';
 
 // 文档更新验证模式
 const updateDocSchema = z.object({

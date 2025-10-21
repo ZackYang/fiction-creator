@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/mongo';
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
-import { DOC_TYPE_LIST } from '@/lib/types';
 
 // 文档创建验证模式
 const createDocSchema = z.object({

@@ -130,7 +130,8 @@ export async function PUT(
     });
 
     // 如果任何内容字段有变化，则记录历史
-    for (const type of DOC_TYPE_LIST) {
+    const contentFields = ['content', 'summary', 'outline', 'improvement', 'notes', 'other', 'synopsis'];
+    for (const type of contentFields) {
       if ((validatedData as any)[type] !== undefined && (validatedData as any)[type] !== (doc as any)?.[type]) {
         updateData.history = [...(doc?.history || []), {
           type: type as Type.DocType,

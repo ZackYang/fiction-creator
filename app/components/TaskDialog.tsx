@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { State } from '@/lib/states';
-import { TASK_TYPE_LIST } from '@/lib/types';
 import toast from 'react-hot-toast';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import DocSelector from './DocSelector';
 import { ZH_CN } from '@/lib/zh-cn';
+
+const TASK_TYPE_LIST = ['content', 'summary', 'improvement', 'synopsis', 'outline', 'notes', 'other'];
 
 interface TaskDialogProps {
   projectId: string;

@@ -4,7 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, ChevronRight, ChevronDown, User, Users, BookOpen, Calendar, Package, MapPin, Zap, Wand2, FileText, Newspaper, AlertCircle, FileWarning } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { DOC_TYPE_LIST, Type } from '@/lib/types';
+import { Type } from '@/lib/types';
+
+const DOC_TYPE_LIST = ['article', 'character', 'organization', 'background', 'event', 'item', 'location', 'ability', 'spell', 'other', 'group'];
 import { ZH_CN } from '@/lib/zh-cn';
 import { AI_APIS } from '@/lib/ai-apis';
 

@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # MongoDB数据库服务
+  mongodb:
+    image: mongo:7.0
+    container_name: fiction-creator-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+      MONGO_INITDB_DATABASE: next_commerce
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - fiction-creator-network
+
+  # Next.js应用服务
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fiction-creator-app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://admin:${MONGO_ROOT_PASSWORD:-admin123}@mongodb:27017/next_commerce?authSource=admin
+      NEXT_PUBLIC_APP_URL: http://137.184.249.178:3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongodb
+    networks:
+      - fiction-creator-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  fiction-creator-network:
+    driver: bridge

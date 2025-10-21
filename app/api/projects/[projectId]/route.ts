@@ -157,10 +157,10 @@ export async function PATCH(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { projectId } = params;
+    const { projectId } = await params;
     const body = await request.json();
     const validatedData = updateProjectSchema.parse(body);
     
